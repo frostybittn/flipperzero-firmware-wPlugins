@@ -1,15 +1,17 @@
 #include "../nfc_playlist.h"
 
 typedef enum {
-    NfcPlaylistMenuSelection_CreatePlaylist,
-    NfcPlaylistMenuSelection_DeletePlaylist,
-    NfcPlaylistMenuSelection_RenamePlaylist,
-    NfcPlaylistMenuSelection_AddNfcItem,
-    NfcPlaylistMenuSelection_RemoveNfcItem,
-    NfcPlaylistMenuSelection_ViewPlaylistContent
-} NfcPlaylistFileEditMenuSelection;
+    NfcPlaylistPlaylistEdit_CreatePlaylist,
+    NfcPlaylistPlaylistEdit_DeletePlaylist,
+    NfcPlaylistPlaylistEdit_RenamePlaylist,
+    NfcPlaylistPlaylistEdit_AddNfcItem,
+    NfcPlaylistPlaylistEdit_RemoveNfcItem,
+    NfcPlaylistPlaylistEdit_MoveNfcItem,
+    NfcPlaylistPlaylistEdit_ViewPlaylistContent
+} NfcPlaylistPlaylistEditMenuSelection;
 
-void nfc_playlist_playlist_edit_menu_callback(void* context, uint32_t index) {
+static void nfc_playlist_playlist_edit_menu_callback(void* context, uint32_t index) {
+    furi_assert(context);
     NfcPlaylist* nfc_playlist = context;
     scene_manager_handle_custom_event(nfc_playlist->scene_manager, index);
 }
@@ -17,57 +19,66 @@ void nfc_playlist_playlist_edit_menu_callback(void* context, uint32_t index) {
 void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
     NfcPlaylist* nfc_playlist = context;
 
-    submenu_set_header(nfc_playlist->submenu, "Edit Playlist");
+    submenu_set_header(nfc_playlist->views.submenu, "Edit Playlist");
 
     bool playlist_path_empty = furi_string_empty(nfc_playlist->settings.playlist_path);
 
     submenu_add_item(
-        nfc_playlist->submenu,
+        nfc_playlist->views.submenu,
         "Create Playlist",
-        NfcPlaylistMenuSelection_CreatePlaylist,
+        NfcPlaylistPlaylistEdit_CreatePlaylist,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist);
 
     submenu_add_lockable_item(
-        nfc_playlist->submenu,
+        nfc_playlist->views.submenu,
         "Delete Playlist",
-        NfcPlaylistMenuSelection_DeletePlaylist,
+        NfcPlaylistPlaylistEdit_DeletePlaylist,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
         playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
-        nfc_playlist->submenu,
+        nfc_playlist->views.submenu,
         "Rename Playlist",
-        NfcPlaylistMenuSelection_RenamePlaylist,
+        NfcPlaylistPlaylistEdit_RenamePlaylist,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
         playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
-        nfc_playlist->submenu,
+        nfc_playlist->views.submenu,
         "Add NFC Item",
-        NfcPlaylistMenuSelection_AddNfcItem,
+        NfcPlaylistPlaylistEdit_AddNfcItem,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
         playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
-        nfc_playlist->submenu,
+        nfc_playlist->views.submenu,
         "Remove NFC Item",
-        NfcPlaylistMenuSelection_RemoveNfcItem,
+        NfcPlaylistPlaylistEdit_RemoveNfcItem,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
         playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
-        nfc_playlist->submenu,
+        nfc_playlist->views.submenu,
+        "Move NFC Item",
+        NfcPlaylistPlaylistEdit_MoveNfcItem,
+        nfc_playlist_playlist_edit_menu_callback,
+        nfc_playlist,
+        playlist_path_empty,
+        "No\nplaylist\nselected");
+
+    submenu_add_lockable_item(
+        nfc_playlist->views.submenu,
         "View Playlist Content",
-        NfcPlaylistMenuSelection_ViewPlaylistContent,
+        NfcPlaylistPlaylistEdit_ViewPlaylistContent,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
         playlist_path_empty,
@@ -81,28 +92,32 @@ bool nfc_playlist_playlist_edit_scene_on_event(void* context, SceneManagerEvent 
     bool consumed = false;
     if(event.type == SceneManagerEventTypeCustom) {
         switch(event.event) {
-        case NfcPlaylistMenuSelection_CreatePlaylist:
+        case NfcPlaylistPlaylistEdit_CreatePlaylist:
             scene_manager_next_scene(
                 nfc_playlist->scene_manager, NfcPlaylistScene_NameNewPlaylist);
             consumed = true;
             break;
-        case NfcPlaylistMenuSelection_DeletePlaylist:
+        case NfcPlaylistPlaylistEdit_DeletePlaylist:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_ConfirmDelete);
             consumed = true;
             break;
-        case NfcPlaylistMenuSelection_RenamePlaylist:
+        case NfcPlaylistPlaylistEdit_RenamePlaylist:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_PlaylistRename);
             consumed = true;
             break;
-        case NfcPlaylistMenuSelection_AddNfcItem:
+        case NfcPlaylistPlaylistEdit_AddNfcItem:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_NfcAdd);
             consumed = true;
             break;
-        case NfcPlaylistMenuSelection_RemoveNfcItem:
+        case NfcPlaylistPlaylistEdit_RemoveNfcItem:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_NfcRemove);
             consumed = true;
             break;
-        case NfcPlaylistMenuSelection_ViewPlaylistContent:
+        case NfcPlaylistPlaylistEdit_MoveNfcItem:
+            scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_NfcMoveItem);
+            consumed = true;
+            break;
+        case NfcPlaylistPlaylistEdit_ViewPlaylistContent:
             scene_manager_next_scene(
                 nfc_playlist->scene_manager, NfcPlaylistScene_ViewPlaylistContent);
             consumed = true;
@@ -116,5 +131,5 @@ bool nfc_playlist_playlist_edit_scene_on_event(void* context, SceneManagerEvent 
 
 void nfc_playlist_playlist_edit_scene_on_exit(void* context) {
     NfcPlaylist* nfc_playlist = context;
-    submenu_reset(nfc_playlist->submenu);
+    submenu_reset(nfc_playlist->views.submenu);
 }

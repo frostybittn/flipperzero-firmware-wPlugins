@@ -1,9 +1,10 @@
 #include "Scenes.hpp"
 
-void FTasks::Data::writeContainerString(const FTasks::NoteContainer& container, UFZ::File& file)
-    noexcept {
+void FTasks::Data::writeContainerString(
+    const FTasks::NoteContainer& container,
+    const UFZ::File& file) noexcept {
     for(size_t i = 0; i < container.size(); i++) {
-        auto& a = container[i];
+        const auto& a = container[i];
         file.write((void*)a.first.data(), a.first.size());
         file.write((void*)newLine, 1);
         file.write((void*)a.second.data(), a.second.size());
@@ -12,7 +13,9 @@ void FTasks::Data::writeContainerString(const FTasks::NoteContainer& container, 
     }
 }
 
-void FTasks::Data::readContainerString(FTasks::NoteContainer& container, UFZ::File& file) noexcept {
+void FTasks::Data::readContainerString(
+    FTasks::NoteContainer& container,
+    const UFZ::File& file) noexcept {
     std::string content;
     content.resize(file.size() + 1);
     file.read(content.data(), content.size());
@@ -36,10 +39,10 @@ void FTasks::Data::readContainerString(FTasks::NoteContainer& container, UFZ::Fi
         container.emplace_back(content.substr(previous, pos), "");
 }
 
-void FTasks::Data::save(UFZ::Application& application) noexcept {
+void FTasks::Data::save(const UFZ::Application& application) noexcept {
     UFZ::File file{};
 
-    auto* ctx = CTX(application.getUserPointer());
+    const auto* ctx = CTX(application.getUserPointer());
     if(file.open(application.getFilesystem(), TASKS_TODO_DATA_FILE, FSAM_WRITE, FSOM_CREATE_ALWAYS))
         writeContainerString(ctx->containers.todo, file);
     file.close();
@@ -47,7 +50,7 @@ void FTasks::Data::save(UFZ::Application& application) noexcept {
         writeContainerString(ctx->containers.done, file);
 }
 
-void FTasks::Data::load(UFZ::Application& application) noexcept {
+void FTasks::Data::load(const UFZ::Application& application) noexcept {
     UFZ::File file{};
 
     auto* ctx = CTX(application.getUserPointer());

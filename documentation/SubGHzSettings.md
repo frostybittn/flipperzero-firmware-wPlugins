@@ -30,6 +30,8 @@ if you need your custom one, make sure it doesn't listed here
     314980000,
     315000000,
     318000000,
+    320000000,
+    320150000,
     330000000,
     345000000,
     348000000,
@@ -58,6 +60,7 @@ if you need your custom one, make sure it doesn't listed here
     434775000, /* LPD433 last channels */
     438900000,
     440175000,
+    462750000,
     464000000,
     467750000,
 

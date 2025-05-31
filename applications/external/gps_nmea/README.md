@@ -45,6 +45,7 @@ the hardware setup.
 
 * [Adafruit Ultimate GPS Breakout]
 * ATGM336H
+* Beitian BE-122
 * Beitian BN-180
 * Beitian BN-220
 * Beitian BN-280
@@ -62,6 +63,7 @@ the hardware setup.
 * [u-Blox NEO-6M]
 * [u-Blox NEO-7M]
 * [Uputronics u-blox MAX-M8C Pico]
+* Quectel L76K
 * [Quectel L80]
 * [M10Q-5883]
 

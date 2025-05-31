@@ -17,7 +17,7 @@
 #include "item.h"
 
 #define QUAC_NAME    "Quac!"
-#define QUAC_VERSION FAP_VERSION
+#define QUAC_VERSION "v0.9.1"
 #define QUAC_ABOUT                                    \
     "Quick Action remote control\n" QUAC_VERSION "\n" \
     "github.com/rdefeo/quac"
@@ -52,15 +52,17 @@ typedef struct App {
 
     FuriString* temp_str; // used for renames/etc
     char temp_cstr[MAX_NAME_LEN]; // used for renames/etc
+    uint32_t temp_u32;
 
     struct {
         QuacAppLayout layout; // Defaults to Portrait
         bool show_icons; // Defaults to True
         bool show_headers; // Defaults to True
+        uint32_t subghz_duration; // Defaults to 1500 ms
         uint32_t rfid_duration; // Defaults to 2500 ms
         uint32_t nfc_duration; // Defaults to 1000 ms
-        uint32_t subghz_repeat; // Defaults to 10, just like the CLI
-        bool subghz_use_ext_antenna; // Defaults to False
+        uint32_t ibutton_duration; // Defaults to 1000 ms
+        bool ir_use_ext_module; // Defaults to False
         bool show_hidden; // Defaults to False
     } settings;
 

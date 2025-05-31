@@ -183,14 +183,14 @@ SubGhzTx furi_hal_subghz_check_tx(uint32_t value);
 bool furi_hal_subghz_is_tx_allowed(uint32_t value);
 
 /** Get the current rolling protocols counter ++/-- value
- * @return    int8_t current value
+ * @return    int32_t current value
  */
-int8_t furi_hal_subghz_get_rolling_counter_mult(void);
+int32_t furi_hal_subghz_get_rolling_counter_mult(void);
 
 /** Set the current rolling protocols counter ++/-- value
- * @param      mult int8_t = -1, -10, -100, 0, 1, 10, 100 
+ * @param      mult int32_t = -1, -10, -50, 0, 1, 10, 50 
  */
-void furi_hal_subghz_set_rolling_counter_mult(int8_t mult);
+void furi_hal_subghz_set_rolling_counter_mult(int32_t mult);
 
 /** Set frequency
  *
@@ -247,7 +247,10 @@ bool furi_hal_subghz_is_async_tx_complete(void);
  */
 void furi_hal_subghz_stop_async_tx(void);
 
-// External CC1101 Ebytes power amplifier control is now enabled by default
+// External CC1101 Amplifier and LEDs (if present) control
+void furi_hal_subghz_set_ext_leds_and_amp(bool enabled);
+// Get state (enabled by default, can be disabled in radio setting with debug ON)
+bool furi_hal_subghz_get_ext_leds_and_amp(void);
 
 #ifdef __cplusplus
 }

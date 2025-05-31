@@ -313,15 +313,6 @@ NfcCommand picopass_poller_nr_mac_auth(PicopassPoller* instance) {
             if(instance->mode == PicopassPollerModeRead) {
                 picopass_poller_prepare_read(instance);
                 instance->state = PicopassPollerStateReadBlock;
-                // Set to non-zero keys to allow emulation
-                memset(
-                    instance->data->card_data[PICOPASS_SECURE_KD_BLOCK_INDEX].data,
-                    0xff,
-                    PICOPASS_BLOCK_LEN);
-                memset(
-                    instance->data->card_data[PICOPASS_SECURE_KC_BLOCK_INDEX].data,
-                    0xff,
-                    PICOPASS_BLOCK_LEN);
             }
         }
 
@@ -431,9 +422,12 @@ NfcCommand picopass_poller_read_block_handler(PicopassPoller* instance) {
             break;
         }
 
-        if(instance->secured && instance->current_block == PICOPASS_SECURE_KD_BLOCK_INDEX) {
-            // Skip over Kd block which is populated earlier (READ of Kd returns all FF's)
+        if(instance->secured && (instance->current_block == PICOPASS_SECURE_KD_BLOCK_INDEX ||
+                                 instance->current_block == PICOPASS_SECURE_KC_BLOCK_INDEX)) {
+            // Kd and Kc blocks cannot be read (card always returns FF's)
+            // Key blocks we authed as would have been already set earlier
             instance->current_block++;
+            continue;
         }
 
         PicopassBlock block = {};
@@ -545,14 +539,14 @@ NfcCommand picopass_poller_write_key_handler(PicopassPoller* instance) {
         const uint8_t* new_key = instance->event_data.req_write_key.key;
         bool is_elite_key = instance->event_data.req_write_key.is_elite_key;
 
-        const uint8_t* csn = picopass_data->card_data[PICOPASS_CSN_BLOCK_INDEX].data;
-        const uint8_t* config_block = picopass_data->card_data[PICOPASS_CONFIG_BLOCK_INDEX].data;
-        uint8_t fuses = config_block[7];
-        const uint8_t* old_key = picopass_data->card_data[PICOPASS_SECURE_KD_BLOCK_INDEX].data;
+        const uint8_t* csn = instance->serial_num.data;
+        const uint8_t* old_key = instance->div_key;
 
         PicopassBlock new_block = {};
         loclass_iclass_calc_div_key(csn, new_key, new_block.data, is_elite_key);
 
+        const uint8_t* config_block = picopass_data->card_data[PICOPASS_CONFIG_BLOCK_INDEX].data;
+        uint8_t fuses = config_block[7];
         if((fuses & 0x80) == 0x80) {
             FURI_LOG_D(TAG, "Plain write for personalized mode key change");
         } else {

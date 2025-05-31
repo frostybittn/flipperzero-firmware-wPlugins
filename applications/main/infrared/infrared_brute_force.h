@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include "infrared_error_code.h"
 
 /**
  * @brief InfraredBruteForce opaque type declaration.
@@ -45,9 +47,13 @@ void infrared_brute_force_set_db_filename(InfraredBruteForce* brute_force, const
  * a infrared_brute_force_set_db_filename() call.
  *
  * @param[in,out] brute_force pointer to the instance to be updated.
- * @returns true on success, false otherwise.
+ * @param[in] auto_detect_buttons bool whether to automatically register newly discovered buttons.
+ * @returns InfraredErrorCodeNone on success, otherwise error code.
  */
-bool infrared_brute_force_calculate_messages(InfraredBruteForce* brute_force);
+InfraredErrorCode infrared_brute_force_calculate_messages(
+    InfraredBruteForce* brute_force,
+    bool auto_detect_buttons,
+    bool ignore_unknown_buttons);
 
 /**
  * @brief Start transmitting signals from a category stored in an InfraredBruteForce's instance dictionary.
@@ -77,18 +83,16 @@ bool infrared_brute_force_is_started(const InfraredBruteForce* brute_force);
 void infrared_brute_force_stop(InfraredBruteForce* brute_force);
 
 /**
- * @brief Send the next signal from the chosen category.
- *
- * This function is called repeatedly until no more signals are left
- * in the chosen signal category.
- *
- * @warning Transmission must be started first by calling infrared_brute_force_start()
- * before calling this function.
- *
- * @param[in,out] brute_force pointer to the instance to be used.
- * @returns true if the next signal existed and could be transmitted, false otherwise.
+ * @brief Send an arbitrary signal from the chosen category.
+ * 
+ * @param[in] brute_force pointer to the instance
+ * @param signal_index the index of the signal within the category, must be
+ *                     between 0 and `record_count` as told by
+ *                     `infrared_brute_force_start`
+ * 
+ * @returns true on success, false otherwise
  */
-bool infrared_brute_force_send_next(InfraredBruteForce* brute_force);
+bool infrared_brute_force_send(InfraredBruteForce* brute_force, uint32_t signal_index);
 
 /**
  * @brief Add a signal category to an InfraredBruteForce instance's dictionary.
@@ -108,3 +112,23 @@ void infrared_brute_force_add_record(
  * @param[in,out] brute_force pointer to the instance to be reset.
  */
 void infrared_brute_force_reset(InfraredBruteForce* brute_force);
+
+/**
+ * @brief Get the total number of unique button names in the database, for example, 
+ *        if a button name is "Power" and it appears 3 times in the db, then the 
+ *        db_size is 1, instead of 3.
+ *
+ * @param[in] brute_force pointer to the InfraredBruteForce instance.
+ * @return size_t number of unique button names.
+ */
+size_t infrared_brute_force_get_button_count(const InfraredBruteForce* brute_force);
+
+/**
+ * @brief Get the button name at the specified index.
+ *
+ * @param[in] brute_force pointer to the InfraredBruteForce instance.
+ * @param[in] index index of the button name to retrieve.
+ * @return const char* button name, or NULL if index is out of range.
+ */
+const char*
+    infrared_brute_force_get_button_name(const InfraredBruteForce* brute_force, size_t index);

@@ -1,3 +1,16 @@
+## 1.15
+- Returned possibility to write 7b MFC to Gen1 tags
+
+## 1.14
+ - Update for new API
+
+## 1.13
+ - Support for dumping Gen1 cards
+ - Minor error screen changes
+
+## 1.12
+ - Removed call to legacy SDK API
+
 ## 1.11
  - Fixed Mifare Ultralight types with latest API update
 

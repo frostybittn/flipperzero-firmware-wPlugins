@@ -30,9 +30,11 @@
 void action_qpl_tx(void* context, const FuriString* action_path, FuriString* error) {
     App* app = context;
 
-    // Save the current RFID and NFC Durations, in case the are changed during playback
+    // Save the current durations, in case the are changed during playback
+    uint32_t orig_subghz_duration = app->settings.subghz_duration;
     uint32_t orig_rfid_duration = app->settings.rfid_duration;
     uint32_t orig_nfc_duration = app->settings.nfc_duration;
+    uint32_t orig_ibutton_duration = app->settings.ibutton_duration;
 
     FuriString* buffer;
     buffer = furi_string_alloc();
@@ -84,7 +86,7 @@ void action_qpl_tx(void* context, const FuriString* action_path, FuriString* err
                     break;
                 }
 
-                // First token wasn't "pause", so maybe args_tmp is a .rfid filename followed
+                // First token wasn't "pause", so maybe args_tmp is a filename followed
                 // by a transmit duration in ms in buffer
                 // Note: Not using path_extract_extension since it expects to find slashes in the
                 // path, and thus won't work if we have a relative path file
@@ -96,7 +98,14 @@ void action_qpl_tx(void* context, const FuriString* action_path, FuriString* err
 
                 // FURI_LOG_I(TAG, " - Found extension of %s", ext);
 
-                if(!strcmp(ext, ".rfid")) {
+                if(!strcmp(ext, ".sub")) {
+                    uint32_t subghz_duration = 0;
+                    // FURI_LOG_I(TAG, "SubGhz file with duration");
+                    if(sscanf(furi_string_get_cstr(buffer), "%lu", &subghz_duration) == 1) {
+                        FURI_LOG_I(TAG, "SubGhz duration = %lu", subghz_duration);
+                        app->settings.subghz_duration = subghz_duration;
+                    }
+                } else if(!strcmp(ext, ".rfid")) {
                     uint32_t rfid_duration = 0;
                     // FURI_LOG_I(TAG, "RFID file with duration");
                     if(sscanf(furi_string_get_cstr(buffer), "%lu", &rfid_duration) == 1) {
@@ -108,6 +117,12 @@ void action_qpl_tx(void* context, const FuriString* action_path, FuriString* err
                     if(sscanf(furi_string_get_cstr(buffer), "%lu", &nfc_duration) == 1) {
                         FURI_LOG_I(TAG, "NFC duration = %lu", nfc_duration);
                         app->settings.nfc_duration = nfc_duration;
+                    }
+                } else if(!strcmp(ext, ".ibtn")) {
+                    uint32_t ibutton_duration = 0;
+                    if(sscanf(furi_string_get_cstr(buffer), "%lu", &ibutton_duration) == 1) {
+                        FURI_LOG_I(TAG, "iButton duration = %lu", ibutton_duration);
+                        app->settings.ibutton_duration = ibutton_duration;
                     }
                 }
 
@@ -135,6 +150,8 @@ void action_qpl_tx(void* context, const FuriString* action_path, FuriString* err
             path_extract_extension(buffer, ext, MAX_EXT_LEN);
             if(!strcmp(ext, ".sub")) {
                 action_subghz_tx(context, buffer, error);
+                // Reset our default duration back - in case it was changed during playback
+                app->settings.subghz_duration = orig_subghz_duration;
             } else if(!strcmp(ext, ".rfid")) {
                 action_rfid_tx(context, buffer, error);
                 // Reset our default duration back - in case it was changed during playback
@@ -145,6 +162,10 @@ void action_qpl_tx(void* context, const FuriString* action_path, FuriString* err
                 action_nfc_tx(context, buffer, error);
                 // Reset our default duration back - in case it was changed during playback
                 app->settings.nfc_duration = orig_nfc_duration;
+            } else if(!strcmp(ext, ".ibtn")) {
+                action_ibutton_tx(context, buffer, error);
+                // Reset our default duration back - in case it was changed during playback
+                app->settings.ibutton_duration = orig_ibutton_duration;
             } else if(!strcmp(ext, ".qpl")) {
                 ACTION_SET_ERROR("Playlist: Can't call playlist from playlist");
             } else {

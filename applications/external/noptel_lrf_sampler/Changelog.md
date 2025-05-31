@@ -1,3 +1,15 @@
+## Version 2.2 - 17/05/2025
+
+- Re-enabled the use of the 5V pin (pin #1) to optionally control the rangefinder's power supply, in addition to the C1 pin (pin #15)
+
+## Version 2.1 - 12/04/2025
+
+- Made passthru.c work with cli_vcp_disable() / clip_vcp_enable() when applicable
+
+## Version 2.0 - 02/10/2024
+
+- Removed call to view_dispatcher_enable_queue() which has been deprecated
+
 ## Version 1.9 - 29/05/2024
 
 - Correctly display the bytes at the left-hand side of the serial traffic screen in the passthrough view

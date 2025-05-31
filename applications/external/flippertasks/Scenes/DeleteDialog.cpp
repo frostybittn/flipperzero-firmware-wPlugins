@@ -1,9 +1,9 @@
 #include "DeleteDialog.hpp"
 
-void FTasks::DeleteDialog::callback(DialogExResult result, void* context) noexcept {
-    auto* app = (UFZ::Application*)context;
+void FTasks::DeleteDialog::callback(const DialogExResult result, void* context) noexcept {
+    const auto* app = static_cast<UFZ::Application*>(context);
     if(result == DialogExResultRight) {
-        auto* ctx = CTX(app->getUserPointer());
+        const auto* ctx = CTX(app->getUserPointer());
         ctx->currentContainer->erase(
             ctx->currentContainer->begin() +
             static_cast<NoteContainer::difference_type>(ctx->currentNoteIndex));
@@ -16,10 +16,11 @@ void FTasks::DeleteDialog::enter(void* context) noexcept {
     auto* ctx = CTX(popup->application->getUserPointer());
 
     ctx->tmpBuffer = R"(Do you want to delete the following note: ")";
-    ctx->tmpBuffer += (*ctx->currentContainer)[ctx->currentNoteIndex].first.c_str(); // Call c_str() because appending doesn't work I guess??
+    ctx->tmpBuffer += (*ctx->currentContainer)[ctx->currentNoteIndex]
+                          .first.c_str(); // Call c_str() because appending doesn't work I guess??
     ctx->tmpBuffer += R"("?)";
 
-        popup->reset();
+    popup->reset();
     popup->setContext(popup->application)
         .setHeader("Delete note?", 64, 4, AlignCenter, AlignTop)
         .setIcon(-1, -1, nullptr)
@@ -31,9 +32,9 @@ void FTasks::DeleteDialog::enter(void* context) noexcept {
     RENDER_VIEW(popup->application, Scenes::DELETE);
 }
 
-bool FTasks::DeleteDialog::event(void* context, SceneManagerEvent event) noexcept {
+bool FTasks::DeleteDialog::event(void* context, const SceneManagerEvent event) noexcept {
     if(event.type == SceneManagerEventTypeCustom) {
-        FORCE_NEXT_SCENE((UFZ::Application*)context, event.event);
+        FORCE_NEXT_SCENE(static_cast<UFZ::Application*>(context), event.event);
         return true;
     }
     return false;

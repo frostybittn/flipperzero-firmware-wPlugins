@@ -1,6 +1,8 @@
 #include "../nfc_playlist.h"
 
-void nfc_playlist_confirm_delete_menu_callback(GuiButtonType result, InputType type, void* context) {
+static void
+    nfc_playlist_confirm_delete_menu_callback(GuiButtonType result, InputType type, void* context) {
+    furi_assert(context);
     NfcPlaylist* nfc_playlist = context;
     if(type == InputTypeShort) {
         view_dispatcher_send_custom_event(nfc_playlist->view_dispatcher, result);
@@ -8,6 +10,7 @@ void nfc_playlist_confirm_delete_menu_callback(GuiButtonType result, InputType t
 }
 
 void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
+    furi_assert(context);
     NfcPlaylist* nfc_playlist = context;
 
     FuriString* file_name = furi_string_alloc();
@@ -18,7 +21,7 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
     furi_string_free(file_name);
 
     widget_add_text_box_element(
-        nfc_playlist->widget,
+        nfc_playlist->views.widget,
         0,
         0,
         128,
@@ -28,13 +31,13 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
         furi_string_get_cstr(temp_str),
         false);
     widget_add_button_element(
-        nfc_playlist->widget,
+        nfc_playlist->views.widget,
         GuiButtonTypeLeft,
         "Cancel",
         nfc_playlist_confirm_delete_menu_callback,
         nfc_playlist);
     widget_add_button_element(
-        nfc_playlist->widget,
+        nfc_playlist->views.widget,
         GuiButtonTypeRight,
         "Delete",
         nfc_playlist_confirm_delete_menu_callback,
@@ -46,6 +49,7 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
 }
 
 bool nfc_playlist_confirm_delete_scene_on_event(void* context, SceneManagerEvent event) {
+    furi_assert(context);
     NfcPlaylist* nfc_playlist = context;
     bool consumed = false;
     if(event.type == SceneManagerEventTypeCustom) {
@@ -54,7 +58,6 @@ bool nfc_playlist_confirm_delete_scene_on_event(void* context, SceneManagerEvent
             Storage* storage = furi_record_open(RECORD_STORAGE);
             if(storage_simply_remove(
                    storage, furi_string_get_cstr(nfc_playlist->settings.playlist_path))) {
-                nfc_playlist->settings.playlist_selected = false;
                 furi_string_reset(nfc_playlist->settings.playlist_path);
             }
             furi_record_close(RECORD_STORAGE);
@@ -62,8 +65,11 @@ bool nfc_playlist_confirm_delete_scene_on_event(void* context, SceneManagerEvent
                 nfc_playlist->scene_manager, NfcPlaylistScene_MainMenu);
             consumed = true;
             break;
-        default:
+        case GuiButtonTypeLeft:
             scene_manager_previous_scene(nfc_playlist->scene_manager);
+            consumed = true;
+            break;
+        default:
             break;
         }
     }
@@ -71,6 +77,7 @@ bool nfc_playlist_confirm_delete_scene_on_event(void* context, SceneManagerEvent
 }
 
 void nfc_playlist_confirm_delete_scene_on_exit(void* context) {
+    furi_assert(context);
     NfcPlaylist* nfc_playlist = context;
-    widget_reset(nfc_playlist->widget);
+    widget_reset(nfc_playlist->views.widget);
 }

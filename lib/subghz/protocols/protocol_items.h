@@ -4,7 +4,6 @@
 
 #include "princeton.h"
 #include "keeloq.h"
-#include "genie.h"
 #include "star_line.h"
 #include "nice_flo.h"
 #include "came.h"
@@ -50,3 +49,10 @@
 #include "x10.h"
 #include "hormann_bisecur.h"
 #include "legrand.h"
+#include "dickert_mahs.h"
+#include "gangqi.h"
+#include "marantec24.h"
+#include "hollarm.h"
+#include "hay21.h"
+#include "revers_rb2.h"
+#include "feron.h"

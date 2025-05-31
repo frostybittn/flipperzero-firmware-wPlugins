@@ -34,6 +34,9 @@ static void findmy_main_draw_callback(Canvas* canvas, void* _model) {
     case FindMyTypeTile:
         network_text = "Tile Network";
         break;
+    case FindMyTypeGoogle:
+        network_text = "Google Network";
+        break;
     default:
         break;
     }
@@ -177,7 +180,7 @@ void findmy_main_update_mac(FindMyMain* findmy_main, uint8_t* mac) {
         FindMyMainModel * model,
         {
             memcpy(model->mac, mac, sizeof(model->mac));
-            furi_hal_bt_reverse_mac_addr(model->mac);
+            reverse_mac_addr(model->mac);
         },
         true);
 }

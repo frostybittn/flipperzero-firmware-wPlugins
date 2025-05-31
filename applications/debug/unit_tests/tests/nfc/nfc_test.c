@@ -262,7 +262,7 @@ static void mf_ultralight_reader_test(const char* path) {
     nfc_listener_start(mfu_listener, NULL, NULL);
 
     MfUltralightData* mfu_data = mf_ultralight_alloc();
-    MfUltralightError error = mf_ultralight_poller_sync_read_card(poller, mfu_data);
+    MfUltralightError error = mf_ultralight_poller_sync_read_card(poller, mfu_data, NULL);
     mu_assert(error == MfUltralightErrorNone, "mf_ultralight_poller_sync_read_card() failed");
 
     nfc_listener_stop(mfu_listener);
@@ -315,7 +315,7 @@ MU_TEST(ntag_213_locked_reader) {
     nfc_listener_start(mfu_listener, NULL, NULL);
 
     MfUltralightData* mfu_data = mf_ultralight_alloc();
-    MfUltralightError error = mf_ultralight_poller_sync_read_card(poller, mfu_data);
+    MfUltralightError error = mf_ultralight_poller_sync_read_card(poller, mfu_data, NULL);
     mu_assert(error == MfUltralightErrorNone, "mf_ultralight_poller_sync_read_card() failed");
 
     nfc_listener_stop(mfu_listener);
@@ -353,7 +353,7 @@ static void mf_ultralight_write(void) {
     MfUltralightData* mfu_data = mf_ultralight_alloc();
 
     // Initial read
-    MfUltralightError error = mf_ultralight_poller_sync_read_card(poller, mfu_data);
+    MfUltralightError error = mf_ultralight_poller_sync_read_card(poller, mfu_data, NULL);
     mu_assert(error == MfUltralightErrorNone, "mf_ultralight_poller_sync_read_card() failed");
 
     mu_assert(
@@ -496,7 +496,7 @@ NfcCommand mf_classic_poller_send_frame_callback(NfcGenericEventEx event, void* 
             MfClassicKey key = {
                 .data = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
             };
-            error = mf_classic_poller_auth(instance, 0, &key, MfClassicKeyTypeA, NULL);
+            error = mf_classic_poller_auth(instance, 0, &key, MfClassicKeyTypeA, NULL, false);
             frame_test->state = (error == MfClassicErrorNone) ?
                                     NfcTestMfClassicSendFrameTestStateReadBlock :
                                     NfcTestMfClassicSendFrameTestStateFail;

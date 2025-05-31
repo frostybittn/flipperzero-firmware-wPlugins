@@ -7,8 +7,10 @@
 #include <task_control_block.h>
 #include <time.h>
 #include <notification/notification_messages.h>
+#include <notification/notification_app.h>
 #include <loader/loader.h>
 #include <lib/toolbox/args.h>
+#include <lib/toolbox/strint.h>
 
 // Close to ISO, `date +'%Y-%m-%d %H:%M:%S %u'`
 #define CLI_DATE_FORMAT "%.4d-%.2d-%.2d %.2d:%.2d:%.2d %d"
@@ -325,13 +327,24 @@ void cli_command_sysctl(Cli* cli, FuriString* args, void* context) {
 void cli_command_vibro(Cli* cli, FuriString* args, void* context) {
     UNUSED(cli);
     UNUSED(context);
+
     if(!furi_string_cmp(args, "0")) {
         NotificationApp* notification = furi_record_open(RECORD_NOTIFICATION);
         notification_message_block(notification, &sequence_reset_vibro);
         furi_record_close(RECORD_NOTIFICATION);
     } else if(!furi_string_cmp(args, "1")) {
+        if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagStealthMode)) {
+            printf("Flipper is in stealth mode. Unmute the device to control vibration.");
+            return;
+        }
+
         NotificationApp* notification = furi_record_open(RECORD_NOTIFICATION);
-        notification_message_block(notification, &sequence_set_vibro_on);
+        if(notification->settings.vibro_on) {
+            notification_message_block(notification, &sequence_set_vibro_on);
+        } else {
+            printf("Vibro is disabled in settings. Enable it to control vibration.");
+        }
+
         furi_record_close(RECORD_NOTIFICATION);
     } else {
         cli_print_usage("vibro", "<1|0>", furi_string_get_cstr(args));
@@ -371,9 +384,9 @@ void cli_command_led(Cli* cli, FuriString* args, void* context) {
     }
     furi_string_free(light_name);
     // Read light value from the rest of the string
-    char* end_ptr;
-    uint32_t value = strtoul(furi_string_get_cstr(args), &end_ptr, 0);
-    if(!(value < 256 && *end_ptr == '\0')) {
+    uint32_t value;
+    if(strint_to_uint32(furi_string_get_cstr(args), NULL, &value, 0) != StrintParseNoError ||
+       value >= 256) {
         cli_print_usage("led", "<r|g|b|bl> <0-255>", furi_string_get_cstr(args));
         return;
     }
@@ -504,27 +517,39 @@ void cli_command_i2c(Cli* cli, FuriString* args, void* context) {
     furi_hal_i2c_release(&furi_hal_i2c_handle_external);
 }
 
+CLI_PLUGIN_WRAPPER("info", cli_command_info)
+CLI_PLUGIN_WRAPPER("src", cli_command_src)
+CLI_PLUGIN_WRAPPER("help", cli_command_help)
+CLI_PLUGIN_WRAPPER("uptime", cli_command_uptime)
+CLI_PLUGIN_WRAPPER("date", cli_command_date)
+CLI_PLUGIN_WRAPPER("sysctl", cli_command_sysctl)
+CLI_PLUGIN_WRAPPER("vibro", cli_command_vibro)
+CLI_PLUGIN_WRAPPER("led", cli_command_led)
+CLI_PLUGIN_WRAPPER("gpio", cli_command_gpio)
+CLI_PLUGIN_WRAPPER("i2c", cli_command_i2c)
+
 void cli_commands_init(Cli* cli) {
-    cli_add_command(cli, "!", CliCommandFlagParallelSafe, cli_command_info, (void*)true);
-    cli_add_command(cli, "info", CliCommandFlagParallelSafe, cli_command_info, NULL);
-    cli_add_command(cli, "device_info", CliCommandFlagParallelSafe, cli_command_info, (void*)true);
-    cli_add_command(cli, "src", CliCommandFlagParallelSafe, cli_command_src, NULL);
-    cli_add_command(cli, "source", CliCommandFlagParallelSafe, cli_command_src, NULL);
+    cli_add_command(cli, "!", CliCommandFlagParallelSafe, cli_command_info_wrapper, (void*)true);
+    cli_add_command(cli, "info", CliCommandFlagParallelSafe, cli_command_info_wrapper, NULL);
+    cli_add_command(
+        cli, "device_info", CliCommandFlagParallelSafe, cli_command_info_wrapper, (void*)true);
+    cli_add_command(cli, "source", CliCommandFlagParallelSafe, cli_command_src_wrapper, NULL);
+    cli_add_command(cli, "src", CliCommandFlagParallelSafe, cli_command_src_wrapper, NULL);
 
-    cli_add_command(cli, "?", CliCommandFlagParallelSafe, cli_command_help, NULL);
-    cli_add_command(cli, "help", CliCommandFlagParallelSafe, cli_command_help, NULL);
+    cli_add_command(cli, "?", CliCommandFlagParallelSafe, cli_command_help_wrapper, NULL);
+    cli_add_command(cli, "help", CliCommandFlagParallelSafe, cli_command_help_wrapper, NULL);
 
-    cli_add_command(cli, "uptime", CliCommandFlagDefault, cli_command_uptime, NULL);
-    cli_add_command(cli, "date", CliCommandFlagParallelSafe, cli_command_date, NULL);
+    cli_add_command(cli, "uptime", CliCommandFlagDefault, cli_command_uptime_wrapper, NULL);
+    cli_add_command(cli, "date", CliCommandFlagParallelSafe, cli_command_date_wrapper, NULL);
     cli_add_command(cli, "log", CliCommandFlagParallelSafe, cli_command_log, NULL);
     cli_add_command(cli, "l", CliCommandFlagParallelSafe, cli_command_log, NULL);
-    cli_add_command(cli, "sysctl", CliCommandFlagDefault, cli_command_sysctl, NULL);
+    cli_add_command(cli, "sysctl", CliCommandFlagDefault, cli_command_sysctl_wrapper, NULL);
     cli_add_command(cli, "top", CliCommandFlagParallelSafe, cli_command_top, NULL);
     cli_add_command(cli, "free", CliCommandFlagParallelSafe, cli_command_free, NULL);
     cli_add_command(cli, "free_blocks", CliCommandFlagParallelSafe, cli_command_free_blocks, NULL);
 
-    cli_add_command(cli, "vibro", CliCommandFlagDefault, cli_command_vibro, NULL);
-    cli_add_command(cli, "led", CliCommandFlagDefault, cli_command_led, NULL);
-    cli_add_command(cli, "gpio", CliCommandFlagDefault, cli_command_gpio, NULL);
-    cli_add_command(cli, "i2c", CliCommandFlagDefault, cli_command_i2c, NULL);
+    cli_add_command(cli, "vibro", CliCommandFlagDefault, cli_command_vibro_wrapper, NULL);
+    cli_add_command(cli, "led", CliCommandFlagDefault, cli_command_led_wrapper, NULL);
+    cli_add_command(cli, "gpio", CliCommandFlagDefault, cli_command_gpio_wrapper, NULL);
+    cli_add_command(cli, "i2c", CliCommandFlagDefault, cli_command_i2c_wrapper, NULL);
 }

@@ -1,26 +1,23 @@
-
 #include "sam_api.h"
 #include <toolbox/path.h>
 #include <toolbox/version.h>
 #include <bit_lib/bit_lib.h>
 
+//#define ASN1_DEBUG                      true
+
 #define TAG "SAMAPI"
 
 #define ASN1_PREFIX                     6
-#define ASN1_DEBUG                      true
 #define SEADER_ICLASS_SR_SIO_BASE_BLOCK 10
 #define SEADER_SERIAL_FILE_NAME         "sam_serial"
 
 const uint8_t picopass_iclass_key[] = {0xaf, 0xa7, 0x85, 0xa7, 0xda, 0xb3, 0x33, 0x78};
 
 static char display[SEADER_UART_RX_BUF_SIZE * 2 + 1] = {0};
-char asn1_log[SEADER_UART_RX_BUF_SIZE] = {0};
 
-uint8_t read4Block6[] = {RFAL_PICOPASS_CMD_READ4, 0x06, 0x45, 0x56};
-uint8_t read4Block9[] = {RFAL_PICOPASS_CMD_READ4, 0x09, 0xB2, 0xAE};
-uint8_t read4Block10[] = {RFAL_PICOPASS_CMD_READ4, 0x0A, 0x29, 0x9C};
-uint8_t read4Block13[] = {RFAL_PICOPASS_CMD_READ4, 0x0D, 0x96, 0xE8};
-//uint8_t read4Block14[] = {RFAL_PICOPASS_CMD_READ4, 0x0E, 0x0d, 0xda};
+#ifdef ASN1_DEBUG
+char asn1_log[SEADER_UART_RX_BUF_SIZE] = {0};
+#endif
 
 uint8_t updateBlock2[] = {RFAL_PICOPASS_CMD_UPDATE, 0x02};
 
@@ -195,6 +192,7 @@ bool seader_send_apdu(
     return true;
 }
 
+#ifdef ASN1_DEBUG
 static int seader_print_struct_callback(const void* buffer, size_t size, void* app_key) {
     if(app_key) {
         char* str = (char*)app_key;
@@ -206,12 +204,20 @@ static int seader_print_struct_callback(const void* buffer, size_t size, void* a
     }
     return 0;
 }
+#else
+static int seader_print_struct_callback(const void* buffer, size_t size, void* app_key) {
+    UNUSED(buffer);
+    UNUSED(size);
+    UNUSED(app_key);
+    return 0;
+}
+#endif
 
 void seader_send_payload(
     Seader* seader,
     Payload_t* payload,
-    uint8_t to,
     uint8_t from,
+    uint8_t to,
     uint8_t replyTo) {
     uint8_t rBuffer[SEADER_UART_RX_BUF_SIZE] = {0};
 
@@ -234,8 +240,8 @@ void seader_send_payload(
 #endif
     //0xa0, 0xda, 0x02, 0x63, 0x00, 0x00, 0x0a,
     //0x44, 0x0a, 0x44, 0x00, 0x00, 0x00, 0xa0, 0x02, 0x96, 0x00
-    rBuffer[0] = to;
-    rBuffer[1] = from;
+    rBuffer[0] = from;
+    rBuffer[1] = to;
     rBuffer[2] = replyTo;
 
     seader_send_apdu(seader, 0xA0, 0xDA, 0x02, 0x63, rBuffer, 6 + er.encoded);
@@ -244,8 +250,8 @@ void seader_send_payload(
 void seader_send_response(
     Seader* seader,
     Response_t* response,
-    uint8_t to,
     uint8_t from,
+    uint8_t to,
     uint8_t replyTo) {
     Payload_t* payload = 0;
     payload = calloc(1, sizeof *payload);
@@ -254,7 +260,7 @@ void seader_send_response(
     payload->present = Payload_PR_response;
     payload->choice.response = *response;
 
-    seader_send_payload(seader, payload, to, from, replyTo);
+    seader_send_payload(seader, payload, from, to, replyTo);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
 }
@@ -282,7 +288,7 @@ void seader_send_request_pacs(Seader* seader) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -304,7 +310,7 @@ void seader_worker_send_serial_number(Seader* seader) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -325,7 +331,7 @@ void seader_worker_send_version(Seader* seader) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -353,7 +359,7 @@ void seader_send_card_detected(Seader* seader, CardDetails_t* cardDetails) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -370,20 +376,49 @@ bool seader_unpack_pacs(Seader* seader, uint8_t* buf, size_t size) {
     asn_dec_rval_t rval = asn_decode(0, ATS_DER, &asn_DEF_PAC, (void**)&pac, buf, size);
 
     if(rval.code == RC_OK) {
+#ifdef ASN1_DEBUG
         char pacDebug[384] = {0};
         (&asn_DEF_PAC)
             ->op->print_struct(&asn_DEF_PAC, pac, 1, seader_print_struct_callback, pacDebug);
         if(strlen(pacDebug) > 0) {
             FURI_LOG_D(TAG, "Received pac: %s", pacDebug);
+        }
+#endif
 
-            memset(display, 0, sizeof(display));
-            if(seader_credential->sio[0] == 0x30) {
-                for(uint8_t i = 0; i < seader_credential->sio_len; i++) {
-                    snprintf(
-                        display + (i * 2), sizeof(display), "%02x", seader_credential->sio[i]);
-                }
-                FURI_LOG_D(TAG, "SIO %s", display);
+        memset(display, 0, sizeof(display));
+        if(seader_credential->sio[0] == 0x30) {
+            for(uint8_t i = 0; i < seader_credential->sio_len; i++) {
+                snprintf(display + (i * 2), sizeof(display), "%02x", seader_credential->sio[i]);
             }
+            FURI_LOG_D(TAG, "SIO %s", display);
+
+#ifdef ASN1_DEBUG
+            SIO_t* sio = 0;
+            sio = calloc(1, sizeof *sio);
+            assert(sio);
+            rval = asn_decode(
+                0,
+                ATS_DER,
+                &asn_DEF_SIO,
+                (void**)&sio,
+                seader_credential->sio,
+                seader_credential->sio_len);
+
+            if(rval.code == RC_OK) {
+                FURI_LOG_D(TAG, "Decoded SIO");
+                char sioDebug[384] = {0};
+                (&asn_DEF_SIO)
+                    ->op->print_struct(
+                        &asn_DEF_SIO, sio, 1, seader_print_struct_callback, sioDebug);
+                if(strlen(sioDebug) > 0) {
+                    FURI_LOG_D(TAG, "SIO: %s", sioDebug);
+                }
+            } else {
+                FURI_LOG_W(TAG, "Failed to decode SIO %d consumed", rval.consumed);
+            }
+
+            ASN_STRUCT_FREE(asn_DEF_SIO, sio);
+#endif
         }
 
         if(pac->size <= sizeof(seader_credential->credential)) {
@@ -609,7 +644,7 @@ void seader_send_nfc_rx(Seader* seader, uint8_t* buffer, size_t len) {
     response->present = Response_PR_nfcResponse;
     response->choice.nfcResponse = *nfcResponse;
 
-    seader_send_response(seader, response, 0x14, 0x0a, 0x0);
+    seader_send_response(seader, response, NFCInterface, SAMInterface, 0x0);
 
     ASN_STRUCT_FREE(asn_DEF_NFCRx, nfcRx);
     ASN_STRUCT_FREE(asn_DEF_NFCResponse, nfcResponse);
@@ -622,18 +657,21 @@ void seader_capture_sio(BitBuffer* tx_buffer, BitBuffer* rx_buffer, SeaderCreden
     const uint8_t* rxBuffer = bit_buffer_get_data(rx_buffer);
 
     if(credential->type == SeaderCredentialTypePicopass) {
-        if(memcmp(buffer, read4Block6, len) == 0 && rxBuffer[0] == 0x30) {
-            memcpy(credential->sio, rxBuffer, 32);
-            credential->sio_len += 32;
-        } else if(memcmp(buffer, read4Block10, len) == 0 && rxBuffer[0] == 0x30) {
-            memcpy(credential->sio, rxBuffer, 32);
-            credential->sio_len += 32;
-        } else if(memcmp(buffer, read4Block9, len) == 0) {
-            memcpy(credential->sio + 32, rxBuffer + 8, 24);
-            credential->sio_len += 24;
-        } else if(memcmp(buffer, read4Block13, len) == 0) {
-            memcpy(credential->sio + 32, rxBuffer + 8, 24);
-            credential->sio_len += 24;
+        if(buffer[0] == RFAL_PICOPASS_CMD_READ_OR_IDENTIFY) {
+            FURI_LOG_D(TAG, "Picopass Read1 block %02x", buffer[1]);
+        }
+        if(buffer[0] == RFAL_PICOPASS_CMD_READ4) {
+            FURI_LOG_D(TAG, "Picopass Read4 block %02x", buffer[1]);
+        }
+
+        if(buffer[0] == RFAL_PICOPASS_CMD_READ4) {
+            uint8_t block_num = buffer[1];
+            if(credential->sio_len == 0 && rxBuffer[0] == 0x30) {
+                credential->sio_start_block = block_num;
+            }
+            uint8_t offset = (block_num - credential->sio_start_block) * PICOPASS_BLOCK_LEN;
+            memcpy(credential->sio + offset, rxBuffer, PICOPASS_BLOCK_LEN * 4);
+            credential->sio_len += PICOPASS_BLOCK_LEN * 4;
         }
     } else if(credential->type == SeaderCredentialType14A) {
         // Desfire EV1 passes SIO in the clear
@@ -957,7 +995,7 @@ void seader_parse_nfc_off(Seader* seader) {
     response->present = Response_PR_nfcResponse;
     response->choice.nfcResponse = *nfcResponse;
 
-    seader_send_response(seader, response, 0x44, 0x0a, 0);
+    seader_send_response(seader, response, ExternalApplicationA, SAMInterface, 0);
 
     free(response);
     free(nfcResponse);
@@ -1087,19 +1125,7 @@ NfcCommand seader_worker_card_detect(
     OCTET_STRING_t atqa_string = {.buf = atqa, .size = 2};
     uint8_t protocol_bytes[] = {0x00, 0x00};
 
-    if(sak == 0 && atqa == NULL) { // picopass
-        protocol_bytes[1] = FrameProtocol_iclass;
-        OCTET_STRING_fromBuf(
-            &cardDetails->protocol, (const char*)protocol_bytes, sizeof(protocol_bytes));
-        memcpy(credential->diversifier, uid, uid_len);
-        credential->diversifier_len = uid_len;
-        credential->isDesfire = false;
-    } else if(atqa == 0) { // MFC
-        protocol_bytes[1] = FrameProtocol_nfc;
-        OCTET_STRING_fromBuf(
-            &cardDetails->protocol, (const char*)protocol_bytes, sizeof(protocol_bytes));
-        cardDetails->sak = &sak_string;
-    } else { // type 4
+    if(sak != 0 && atqa != NULL) { // type 4
         protocol_bytes[1] = FrameProtocol_nfc;
         OCTET_STRING_fromBuf(
             &cardDetails->protocol, (const char*)protocol_bytes, sizeof(protocol_bytes));
@@ -1110,6 +1136,20 @@ NfcCommand seader_worker_card_detect(
             memcpy(credential->diversifier, uid, uid_len);
             credential->diversifier_len = uid_len;
         }
+    } else if(sak != 0 && atqa == NULL) { // MFC
+        protocol_bytes[1] = FrameProtocol_nfc;
+        OCTET_STRING_fromBuf(
+            &cardDetails->protocol, (const char*)protocol_bytes, sizeof(protocol_bytes));
+        cardDetails->sak = &sak_string;
+    } else if(uid_len == 8) { // picopass
+        protocol_bytes[1] = FrameProtocol_iclass;
+        OCTET_STRING_fromBuf(
+            &cardDetails->protocol, (const char*)protocol_bytes, sizeof(protocol_bytes));
+        memcpy(credential->diversifier, uid, uid_len);
+        credential->diversifier_len = uid_len;
+        credential->isDesfire = false;
+    } else {
+        FURI_LOG_D(TAG, "Unknown card type");
     }
 
     seader_send_card_detected(seader, cardDetails);

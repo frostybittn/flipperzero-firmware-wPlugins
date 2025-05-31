@@ -19,6 +19,7 @@
 #include <gui/modules/loading.h>
 #include <gui/modules/submenu.h>
 #include <gui/modules/dialog_ex.h>
+#include <gui/modules/number_input.h>
 #include <gui/modules/text_input.h>
 #include <gui/modules/button_menu.h>
 #include <gui/modules/button_panel.h>
@@ -53,7 +54,7 @@
 #define XREMOTE_VERSION                FAP_VERSION
 
 #define INFRARED_APP_EXTENSION ".ir"
-#define INFRARED_APP_FOLDER    ANY_PATH("infrared")
+#define INFRARED_APP_FOLDER    EXT_PATH("infrared")
 
 #define SUBGHZ_APP_EXTENSION ".sub"
 

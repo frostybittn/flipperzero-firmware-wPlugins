@@ -9,7 +9,6 @@
 #include "models/cross/xremote_cross_remote.h"
 #include "helpers/subghz/subghz_types.h"
 #include "helpers/subghz/subghz.h"
-#include "helpers/gui/int_input.h"
 #include "xremote_i.h"
 
 typedef struct SubGhz SubGhz;
@@ -37,12 +36,15 @@ typedef struct {
     XRemotePauseSet* xremote_pause_set;
     InfraredRemote* ir_remote_buffer;
     InfraredWorker* ir_worker;
+    bool ir_is_otg_enabled; /**< Whether OTG power (external 5V) is enabled for IR. */
+    uint32_t ir_tx_pin;
     SubGhzRemote* sg_remote_buffer;
     CrossRemote* cross_remote;
     uint32_t haptic;
     uint32_t speaker;
     uint32_t led;
     uint32_t save_settings;
+    uint32_t loop_transmit;
     uint32_t edit_item;
     uint32_t ir_timing;
     char* ir_timing_char;
@@ -50,9 +52,11 @@ typedef struct {
     char* sg_timing_char;
     bool transmitting;
     bool stop_transmit;
+    size_t transmit_item;
     char text_store[XREMOTE_TEXT_STORE_NUM][XREMOTE_TEXT_STORE_SIZE + 1];
     SubGhz* subghz;
-    IntInput* int_input;
+    NumberInput* number_input;
+    bool loadFavorite;
 } XRemote;
 
 typedef enum {
@@ -66,7 +70,7 @@ typedef enum {
     XRemoteViewIdIrRemote,
     XRemoteViewIdStack,
     XRemoteViewIdTextInput,
-    XRemoteViewIdIntInput,
+    XRemoteViewIdNumberInput,
     XRemoteViewIdTransmit,
     XRemoteViewIdPauseSet,
 } XRemoteViewId;
@@ -87,9 +91,16 @@ typedef enum {
 } XRemoteLedState;
 
 typedef enum {
+    XRemoteLoopOff,
+    XRemoteLoopOn,
+} XRemoteLoopState;
+
+typedef enum {
     XRemoteSettingsOff,
     XRemoteSettingsOn,
 } XRemoteSettingsStoreState;
 
 void xremote_popup_closed_callback(void* context);
 void xremote_text_input_callback(void* context);
+void xremote_ir_enable_otg(XRemote* app, bool enable);
+void xremote_ir_set_tx_pin(XRemote* app);

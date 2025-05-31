@@ -22,7 +22,12 @@ App(
     fap_private_libs=[
         Lib(
             name="asn1",
-            cflags=["-Wno-error"],
+            cflags=[
+                "-Wno-error",
+                "-DASN_EMIT_DEBUG=0",
+                "-Os",
+                "-DASN_DISABLE_PER_SUPPORT=1",
+            ],
         ),
         Lib(
             name="loclass",
@@ -34,7 +39,7 @@ App(
     fap_author="bettse",
     # fap_weburl="https://seader.ericbetts.dev",
     fap_weburl="https://github.com/bettse/seader/",
-    fap_version="2.10",
+    fap_version="3.3",
     fap_description="Interface with a SAM from the Flipper Zero over UART",
 )
 

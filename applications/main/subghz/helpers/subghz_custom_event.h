@@ -35,6 +35,7 @@ typedef enum {
     SubGhzCustomEventSceneRpcLoad,
     SubGhzCustomEventSceneRpcButtonPress,
     SubGhzCustomEventSceneRpcButtonRelease,
+    SubGhzCustomEventSceneRpcButtonPressRelease,
     SubGhzCustomEventSceneRpcSessionClose,
 
     SubGhzCustomEventViewReceiverOK,
@@ -89,6 +90,8 @@ typedef enum {
     SetTypeAllmatic433,
     SetTypeAllmatic868,
     SetTypeCenturion433,
+    SetTypeMonarch433,
+    SetTypeJollyMotors433,
     SetTypeSommer_FM_434,
     SetTypeSommer_FM_868,
     SetTypeSommer_FM238_434,
@@ -125,6 +128,10 @@ typedef enum {
     SetTypePricenton315,
     SetTypePricenton433,
     SetTypeBETT_433,
+    SetTypeGangQi_433,
+    SetTypeHollarm_433,
+    SetTypeReversRB2_433,
+    SetTypeMarantec24_868,
     SetTypeLinear_300_00,
     // SetTypeNeroSketch, //Deleted in OFW
     // SetTypeNeroRadio, //Deleted in OFW

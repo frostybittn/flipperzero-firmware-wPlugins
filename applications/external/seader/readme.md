@@ -1,7 +1,7 @@
 # Seader
 
-
-A [Flipper Zero](https://flipperzero.one/) application (aka "fap") to interface with a SAM from the Flipper Zero over UART.  Latest release on the [App Catalog](https://lab.flipper.net/apps/seader).
+A [Flipper Zero](https://flipperzero.one/) application (aka "fap") 
+that read credential from HID: iClass, iClass SE, Desfire EV1/EV2, and Seos using a HID SAM and UART adapter.  Latest release on the [App Catalog](https://lab.flipper.net/apps/seader).
 
 ## Bugs
 
@@ -17,9 +17,19 @@ Or build it yourself from the files in the [NARD repo](https://github.com/killer
 
 Optionally 3d print a [case designed by Antiklesys](https://www.printables.com/model/576735-flipper-zero-samnard-protecting-cover).
 
-### Option 2: Smart Card 2 Click
+### Option 2: Flippermeister
 
-Put SAM ([USA](https://www.cdw.com/product/hp-sim-for-hid-iclass-for-hip2-reader-security-sim/4854794) [EU](https://www.rfideas-shop.com/en/kt-sim-se-sim-card-hid-iclass-and-seos-for-sphip-r.html) [CA](https://www.pc-canada.com/item/hp-sim-for-hid-iclass-se-and-hid-iclass-seos-for-hip2-reader/y7c07a)) into **[adapter](https://a.co/d/1E9Zk1h)** (because of chip on top) and plug into **[reader](https://www.mikroe.com/smart-card-2-click)** (alt: [digikey](https://www.digikey.com/en/products/detail/mikroelektronika/MIKROE-5492/20840872) with cheaper US shipping). Connect reader to Flipper Zero (See `Connections` below).
+Buy it at [Red Team Tools](https://www.redteamtools.com/flippermeister/).
+
+### Option 3: Smart Card 2 Click
+
+Buy HID SAM:
+ * [USA](https://www.cdw.com/product/hp-sim-for-hid-iclass-for-hip2-reader-security-sim/4854794)
+ * [Europe](https://www.rfideas-shop.com/en/kt-sim-se-sim-card-hid-iclass-and-seos-for-sphip-r.html)
+ * [Canada](https://www.pc-canada.com/item/hp-sim-for-hid-iclass-se-and-hid-iclass-seos-for-hip2-reader/y7c07a)
+ * [eBay](https://www.ebay.com/p/4037642616)
+
+Put SAM into **[adapter](https://a.co/d/1E9Zk1h)** (because of chip on top) and plug into **Smart Card 2 Click** ([Mikroe](https://www.mikroe.com/smart-card-2-click) [digikey](https://www.digikey.com/en/products/detail/mikroelektronika/MIKROE-5492/20840872) with cheaper US shipping). Connect Smart Card 2 Click to Flipper Zero (See `Connections` below).
 
 Optionally 3d print a [case designed by sean](https://www.printables.com/model/543149-case-for-flipper-zero-devboard-smart2click-samsim)
 
@@ -36,7 +46,7 @@ Optionally 3d print a [case designed by sean](https://www.printables.com/model/5
 
 ### To Build App
 
- * Install [UFBT](https://github.com/flipperdevices/flipperzero-ufbt)
+ * Install [ufbt](https://github.com/flipperdevices/flipperzero-ufbt)
  * `ufbt` to build
  * `ufbt launch` to launch
 
@@ -58,3 +68,4 @@ Optionally 3d print a [case designed by sean](https://www.printables.com/model/5
 - `arm-none-eabi-nm ~/.ufbt/build/seader.fap -CS --size-sort`
 - `arm-none-eabi-readelf ~/.ufbt/build/seader.fap -t`
 - `ufbt cli` -> `free_blocks`
+

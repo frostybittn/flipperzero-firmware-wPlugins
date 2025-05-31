@@ -5,7 +5,7 @@ UFZ::Application::Application(
     const std::vector<UWidget*>& widgetsRef,
     void* userPointer,
     const std::function<void(Application&)>& begin,
-    uint32_t tickPeriod) noexcept {
+    const uint32_t tickPeriod) noexcept {
     run(widgetsRef, userPointer, begin, tickPeriod);
 }
 
@@ -13,7 +13,7 @@ void UFZ::Application::run(
     const std::vector<UWidget*>& widgetsRef,
     void* userPointer,
     const std::function<void(Application&)>& begin,
-    uint32_t tickPeriod) noexcept {
+    const uint32_t tickPeriod) noexcept {
     widgets = widgetsRef;
     tickInterval = tickPeriod;
     ctx = userPointer;
@@ -23,7 +23,7 @@ void UFZ::Application::run(
     eventCallbacks.reserve(size);
     exitCallbacks.reserve(size);
 
-    for(auto& a : widgets) {
+    for(const auto& a : widgets) {
         enterCallbacks.push_back(a->enter);
         eventCallbacks.push_back(a->event);
         exitCallbacks.push_back(a->exit);
@@ -54,7 +54,7 @@ void UFZ::Application::initViewDispatcher() noexcept {
     viewDispatcher.init();
 
     for(size_t i = 0; i < widgets.size(); i++) {
-        auto& a = widgets[i];
+        const auto& a = widgets[i];
         a->application = this;
         a->id = i;
         a->alloc();
@@ -64,7 +64,7 @@ void UFZ::Application::initViewDispatcher() noexcept {
 
     view_dispatcher_set_event_callback_context(viewDispatcher.viewDispatcher, this);
     view_dispatcher_set_custom_event_callback(
-        viewDispatcher.viewDispatcher, [](void* context, uint32_t customEvent) -> bool {
+        viewDispatcher.viewDispatcher, [](void* context, const uint32_t customEvent) -> bool {
             furi_assert(context);
             return static_cast<Application*>(context)->sceneManager.handleCustomEvent(customEvent);
         });
@@ -86,7 +86,7 @@ void UFZ::Application::initViewDispatcher() noexcept {
 }
 
 void UFZ::Application::initGUI() noexcept {
-    gui = (Gui*)furi_record_open(RECORD_GUI);
+    gui = static_cast<Gui*>(furi_record_open(RECORD_GUI));
     view_dispatcher_attach_to_gui(
         viewDispatcher.viewDispatcher, gui, ViewDispatcherTypeFullscreen);
 }
@@ -113,19 +113,19 @@ void UFZ::Application::freeGUI() noexcept {
     furi_record_close(RECORD_GUI);
 }
 
-const UFZ::ViewDispatcher& UFZ::Application::getViewDispatcher() noexcept {
+const UFZ::ViewDispatcher& UFZ::Application::getViewDispatcher() const noexcept {
     return viewDispatcher;
 }
 
-const UFZ::SceneManager& UFZ::Application::getSceneManager() noexcept {
+const UFZ::SceneManager& UFZ::Application::getSceneManager() const noexcept {
     return sceneManager;
 }
 
-void* UFZ::Application::getUserPointer() noexcept {
+void* UFZ::Application::getUserPointer() const noexcept {
     return ctx;
 }
 
-const UFZ::Filesystem& UFZ::Application::getFilesystem() noexcept {
+const UFZ::Filesystem& UFZ::Application::getFilesystem() const noexcept {
     return filesystem;
 }
 
@@ -135,7 +135,6 @@ const UFZ::Filesystem& UFZ::Application::getFilesystem() noexcept {
 
 void UFZ::ViewDispatcher::init() noexcept {
     viewDispatcher = view_dispatcher_alloc();
-    view_dispatcher_enable_queue(viewDispatcher);
 }
 
 void UFZ::ViewDispatcher::free() noexcept {
@@ -149,7 +148,7 @@ void UFZ::ViewDispatcher::free() noexcept {
     }
 }
 
-void UFZ::ViewDispatcher::switchToView(uint32_t id) const noexcept {
+void UFZ::ViewDispatcher::switchToView(const uint32_t id) const noexcept {
     view_dispatcher_switch_to_view(viewDispatcher, id);
 }
 
@@ -161,7 +160,7 @@ void UFZ::ViewDispatcher::sendToBack() const noexcept {
     view_dispatcher_send_to_back(viewDispatcher);
 }
 
-void UFZ::ViewDispatcher::sendCustomEvent(uint32_t event) const noexcept {
+void UFZ::ViewDispatcher::sendCustomEvent(const uint32_t event) const noexcept {
     view_dispatcher_send_custom_event(viewDispatcher, event);
 }
 
@@ -173,15 +172,15 @@ void UFZ::ViewDispatcher::stop() const noexcept {
 // =================================================== Scene manager ===================================================
 // =====================================================================================================================
 
-void UFZ::SceneManager::setSceneState(uint32_t id, uint32_t state) const noexcept {
+void UFZ::SceneManager::setSceneState(const uint32_t id, const uint32_t state) const noexcept {
     scene_manager_set_scene_state(sceneManager, id, state);
 }
 
-uint32_t UFZ::SceneManager::getSceneState(uint32_t id) const noexcept {
+uint32_t UFZ::SceneManager::getSceneState(const uint32_t id) const noexcept {
     return scene_manager_get_scene_state(sceneManager, id);
 }
 
-bool UFZ::SceneManager::handleCustomEvent(uint32_t event) const noexcept {
+bool UFZ::SceneManager::handleCustomEvent(const uint32_t event) const noexcept {
     return scene_manager_handle_custom_event(sceneManager, event);
 }
 
@@ -193,7 +192,7 @@ void UFZ::SceneManager::handleTickEvent() const noexcept {
     scene_manager_handle_tick_event(sceneManager);
 }
 
-void UFZ::SceneManager::nextScene(uint32_t id) const noexcept {
+void UFZ::SceneManager::nextScene(const uint32_t id) const noexcept {
     return scene_manager_next_scene(sceneManager, id);
 }
 
@@ -201,20 +200,21 @@ bool UFZ::SceneManager::previousScene() const noexcept {
     return scene_manager_previous_scene(sceneManager);
 }
 
-bool UFZ::SceneManager::hasPreviousScene(uint32_t id) const noexcept {
+bool UFZ::SceneManager::hasPreviousScene(const uint32_t id) const noexcept {
     return scene_manager_has_previous_scene(sceneManager, id);
 }
 
-bool UFZ::SceneManager::searchAndSwitchToPreviousScene(uint32_t id) const noexcept {
+bool UFZ::SceneManager::searchAndSwitchToPreviousScene(const uint32_t id) const noexcept {
     return scene_manager_search_and_switch_to_previous_scene(sceneManager, id);
 }
 
-bool UFZ::SceneManager::searchAndSwitchToPreviousSceneOneOf(const uint32_t* ids, size_t idsSize)
-    const noexcept {
+bool UFZ::SceneManager::searchAndSwitchToPreviousSceneOneOf(
+    const uint32_t* ids,
+    const size_t idsSize) const noexcept {
     return scene_manager_search_and_switch_to_previous_scene_one_of(sceneManager, ids, idsSize);
 }
 
-bool UFZ::SceneManager::searchAndSwitchToAnotherScene(uint32_t id) const noexcept {
+bool UFZ::SceneManager::searchAndSwitchToAnotherScene(const uint32_t id) const noexcept {
     return scene_manager_search_and_switch_to_another_scene(sceneManager, id);
 }
 

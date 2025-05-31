@@ -233,6 +233,27 @@ static void render_callback(Canvas* const canvas, void* ctx) {
         case PIMG_AKTET:
             canvas_draw_icon(canvas, 11, 2, &I_Akira_Tetsuo);
             break;
+        case PIMG_ANDROID:
+            canvas_draw_icon(canvas, 11, 2, &I_Android);
+            break;
+        case PIMG_BLBalalaika:
+            canvas_draw_icon(canvas, 11, 2, &I_Black_Lagoon_Balalaika);
+            break;
+        case PIMG_BLBenny:
+            canvas_draw_icon(canvas, 11, 2, &I_Black_Lagoon_Benny);
+            break;
+        case PIMG_BLDutch:
+            canvas_draw_icon(canvas, 11, 2, &I_Black_Lagoon_Dutch);
+            break;
+        case PIMG_BLRevy:
+            canvas_draw_icon(canvas, 11, 2, &I_Black_Lagoon_Revy);
+            break;
+        case PIMG_BLRoberta:
+            canvas_draw_icon(canvas, 11, 2, &I_Black_Lagoon_Roberta);
+            break;
+        case PIMG_BLRock:
+            canvas_draw_icon(canvas, 11, 2, &I_Black_Lagoon_Rock);
+            break;
         case PIMG_BRIAREOS:
             canvas_draw_icon(canvas, 11, 2, &I_Briareos_Hecatonchires);
             break;
@@ -245,6 +266,9 @@ static void render_callback(Canvas* const canvas, void* ctx) {
         case PIMG_DEER:
             canvas_draw_icon(canvas, 11, 2, &I_Deer);
             break;
+        case PIMG_DOKKAEBI:
+            canvas_draw_icon(canvas, 11, 2, &I_Dokkaebi);
+            break;
         case PIMG_DOLPHIN:
             canvas_draw_icon(canvas, 11, 2, portrait_happy[passport->tmpLvl]);
             break;
@@ -253,6 +277,9 @@ static void render_callback(Canvas* const canvas, void* ctx) {
             break;
         case PIMG_ED209:
             canvas_draw_icon(canvas, 11, 2, &I_ED209);
+            break;
+        case PIMG_FALLOUT:
+            canvas_draw_icon(canvas, 11, 2, &I_Fallout);
             break;
         case PIMG_FSOCIETY:
             canvas_draw_icon(canvas, 11, 2, &I_FSociety_Mask);
@@ -302,6 +329,18 @@ static void render_callback(Canvas* const canvas, void* ctx) {
         case PIMG_GOKUSSJ3:
             canvas_draw_icon(canvas, 11, 2, &I_g0ku_3);
             break;
+        case PIMG_GTAVFRANKLIN:
+            canvas_draw_icon(canvas, 11, 2, &I_GTAV_Franklin);
+            break;
+        case PIMG_GTAVMICHAEL:
+            canvas_draw_icon(canvas, 11, 2, &I_GTAV_Michael);
+            break;
+        case PIMG_GTAVTREVOR:
+            canvas_draw_icon(canvas, 11, 2, &I_GTAV_Trevor);
+            break;
+        case PIMG_GUNNMGALLY:
+            canvas_draw_icon(canvas, 11, 2, &I_GUNNM_Gally);
+            break;
         case PIMG_GUYFAWKES:
             canvas_draw_icon(canvas, 11, 2, &I_Guy_Fawkes_Mask);
             break;
@@ -325,6 +364,15 @@ static void render_callback(Canvas* const canvas, void* ctx) {
             break;
         case PIMG_NEUROMANCER:
             canvas_draw_icon(canvas, 11, 2, &I_Neuromancer);
+            break;
+        case PIMG_O808Benten:
+            canvas_draw_icon(canvas, 11, 2, &I_Oedo808_Benten);
+            break;
+        case PIMG_O808Gogul:
+            canvas_draw_icon(canvas, 11, 2, &I_Oedo808_Gogul);
+            break;
+        case PIMG_O808Sengoku:
+            canvas_draw_icon(canvas, 11, 2, &I_Oedo808_Sengoku);
             break;
         case PIMG_PIKASLEEPY:
             canvas_draw_icon(canvas, 11, 2, &I_PikaSleepy);
