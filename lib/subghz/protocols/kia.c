@@ -267,6 +267,7 @@ SubGhzProtocolStatus
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 const SubGhzProtocol subghz_protocol_kia = {
     .name = SUBGHZ_PROTOCOL_KIA_NAME,
     .type = SubGhzProtocolTypeDynamic,
@@ -279,6 +280,8 @@ const SubGhzProtocol subghz_protocol_kia = {
     .filter = SubGhzProtocolFilter_Alarms,
 };
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
