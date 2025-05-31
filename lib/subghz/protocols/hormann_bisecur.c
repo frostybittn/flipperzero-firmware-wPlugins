@@ -17,7 +17,7 @@ static const SubGhzBlockConst subghz_protocol_hormann_bisecur_const = {
     .te_short = 208,
     .te_long = 416,
     .te_delta = 104,
-    .min_count_bit_for_found = 176,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderHormannBiSecur {
@@ -78,7 +78,7 @@ const SubGhzProtocolEncoder subghz_protocol_hormann_bisecur_encoder = {
 const SubGhzProtocol subghz_protocol_hormann_bisecur = {
     .name = SUBGHZ_PROTOCOL_HORMANN_BISECUR_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_hormann_bisecur_decoder,

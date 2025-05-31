@@ -16,7 +16,7 @@
 
 #define TAG "SubGhzProtocolNiceFlorS"
 
-#define NICE_ONE_COUNT_BIT 72
+#define NICE_ONE_COUNT_BIT 61
 #define NICE_ONE_NAME      "Nice One"
 
 static const SubGhzBlockConst subghz_protocol_nice_flor_s_const = {
@@ -80,9 +80,8 @@ const SubGhzProtocolEncoder subghz_protocol_nice_flor_s_encoder = {
 const SubGhzProtocol subghz_protocol_nice_flor_s = {
     .name = SUBGHZ_PROTOCOL_NICE_FLOR_S_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
-            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
-            SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_nice_flor_s_decoder,
     .encoder = &subghz_protocol_nice_flor_s_encoder,

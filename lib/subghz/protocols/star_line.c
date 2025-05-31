@@ -1,6 +1,7 @@
 #include "star_line.h"
 #include "keeloq_common.h"
-
+#include <lib/toolbox/manchester_decoder.h>
+#include <lib/toolbox/manchester_encoder.h>
 #include "../subghz_keystore.h"
 #include <m-array.h>
 
@@ -15,10 +16,10 @@
 #define TAG "SubGhzProtocolStarLine"
 
 static const SubGhzBlockConst subghz_protocol_star_line_const = {
-    .te_short = 250,
-    .te_long = 500,
+    .te_short = 500,
+    .te_long = 1000,
     .te_delta = 120,
-    .min_count_bit_for_found = 64,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderStarLine {
@@ -80,13 +81,11 @@ const SubGhzProtocolEncoder subghz_protocol_star_line_encoder = {
 const SubGhzProtocol subghz_protocol_star_line = {
     .name = SUBGHZ_PROTOCOL_STAR_LINE_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_star_line_decoder,
     .encoder = &subghz_protocol_star_line_encoder,
-
-    .filter = SubGhzProtocolFilter_StarLine,
 };
 
 /** 

@@ -14,7 +14,8 @@
 
 #include "genie.h"
 #include "keeloq_common.h"
-
+#include <lib/toolbox/manchester_decoder.h>
+#include <lib/toolbox/manchester_encoder.h>
 #define TAG "SubGhzProtocolGenie"
 
 // Should be major version of supported Genie Recorder (.gne) files
@@ -40,7 +41,7 @@ static const SubGhzBlockConst subghz_protocol_genie_const = {
     .te_short = 200,
     .te_long = 400,
     .te_delta = 70,
-    .min_count_bit_for_found = 64,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderGenie {

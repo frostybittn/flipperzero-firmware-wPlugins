@@ -44,7 +44,7 @@ static const SubGhzBlockConst subghz_protocol_honeywell_const = {
     .te_long = 280,
     .te_short = 143,
     .te_delta = 51,
-    .min_count_bit_for_found = 62,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderHoneywell {

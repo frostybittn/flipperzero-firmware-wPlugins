@@ -2,7 +2,7 @@
 
 #include "base.h"
 
-#define SUBGHZ_PROTOCOL_KIA_NAME "KIA Seed"
+#define SUBGHZ_PROTOCOL_KIA "KIA Seed"
 
 typedef struct SubGhzProtocolDecoderKIA SubGhzProtocolDecoderKIA;
 typedef struct SubGhzProtocolEncoderKIA SubGhzProtocolEncoderKIA;

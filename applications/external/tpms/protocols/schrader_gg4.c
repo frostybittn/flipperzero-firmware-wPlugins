@@ -1,6 +1,6 @@
 #include "schrader_gg4.h"
 #include <lib/toolbox/manchester_decoder.h>
-
+#include <lib/toolbox/manchester_encoder.h>
 #define TAG "Schrader"
 
 // https://github.com/merbanan/rtl_433/blob/master/src/devices/schraeder.c
@@ -47,7 +47,7 @@ static const SubGhzBlockConst tpms_protocol_schrader_gg4_const = {
     .te_short = 120,
     .te_long = 240,
     .te_delta = 55, // 50% of te_short due to poor sensitivity
-    .min_count_bit_for_found = 64,
+    .min_count_bit_for_found = 61,
 };
 
 struct TPMSProtocolDecoderSchraderGG4 {

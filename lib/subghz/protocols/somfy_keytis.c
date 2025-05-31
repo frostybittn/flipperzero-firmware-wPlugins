@@ -1,6 +1,6 @@
 #include "somfy_keytis.h"
 #include <lib/toolbox/manchester_decoder.h>
-
+#include <lib/toolbox/manchester_encoder.h>
 #include "../blocks/const.h"
 #include "../blocks/decoder.h"
 #include "../blocks/encoder.h"
@@ -10,10 +10,10 @@
 #define TAG "SubGhzProtocolSomfyKeytis"
 
 static const SubGhzBlockConst subghz_protocol_somfy_keytis_const = {
-    .te_short = 640,
-    .te_long = 1280,
+    .te_short = 600,
+    .te_long = 1200,
     .te_delta = 250,
-    .min_count_bit_for_found = 80,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderSomfyKeytis {
@@ -60,8 +60,8 @@ const SubGhzProtocolDecoder subghz_protocol_somfy_keytis_decoder = {
 const SubGhzProtocol subghz_protocol_somfy_keytis = {
     .name = SUBGHZ_PROTOCOL_SOMFY_KEYTIS_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
-            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_somfy_keytis_decoder,
     .encoder = &subghz_protocol_somfy_keytis_encoder,

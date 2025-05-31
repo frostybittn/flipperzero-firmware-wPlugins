@@ -1,5 +1,6 @@
 #include "bin_raw.h"
-
+#include <lib/toolbox/manchester_decoder.h>
+#include <lib/toolbox/manchester_encoder.h>
 #include "../blocks/const.h"
 #include "../blocks/decoder.h"
 #include "../blocks/encoder.h"
@@ -17,11 +18,11 @@
 #define BIN_RAW_BUF_RAW_SIZE  2048
 #define BIN_RAW_BUF_DATA_SIZE 512
 
-#define BIN_RAW_THRESHOLD_RSSI     -85.0f
+#define BIN_RAW_THRESHOLD_RSSI     -95.0f
 #define BIN_RAW_DELTA_RSSI         7.0f
 #define BIN_RAW_SEARCH_CLASSES     20
 #define BIN_RAW_TE_MIN_COUNT       40
-#define BIN_RAW_BUF_MIN_DATA_COUNT 128
+#define BIN_RAW_BUF_MIN_DATA_COUNT 28
 #define BIN_RAW_MAX_MARKUP_COUNT   20
 
 //#define BIN_RAW_DEBUG
@@ -38,9 +39,9 @@
 
 static const SubGhzBlockConst subghz_protocol_bin_raw_const = {
     .te_short = 30,
-    .te_long = 65000,
+    .te_long = 5000,
     .te_delta = 0,
-    .min_count_bit_for_found = 0,
+    .min_count_bit_for_found = 28,
 };
 
 typedef enum {
@@ -76,6 +77,7 @@ struct SubGhzProtocolDecoderBinRAW {
     size_t data_raw_ind;
     uint32_t te;
     float adaptive_threshold_rssi;
+    BinRAWDecoderStep parser_step;
 };
 
 struct SubGhzProtocolEncoderBinRAW {
@@ -117,7 +119,7 @@ const SubGhzProtocol subghz_protocol_bin_raw = {
     .name = SUBGHZ_PROTOCOL_BIN_RAW_NAME,
     .type = SubGhzProtocolTypeBinRAW,
 #ifdef BIN_RAW_DEBUG
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_315 | SubGhzProtocolFlag_868 |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 |
             SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 #else
@@ -378,7 +380,7 @@ void subghz_protocol_decoder_bin_raw_reset(void* context) {
 #ifdef BIN_RAW_DEBUG
     UNUSED(instance);
 #else
-    instance->decoder.parser_step = BinRAWDecoderStepNoParse;
+    instance->parser_step = BinRAWDecoderStepNoParse;
     instance->data_raw_ind = 0;
 #endif
 }
@@ -387,9 +389,9 @@ void subghz_protocol_decoder_bin_raw_feed(void* context, bool level, uint32_t du
     furi_assert(context);
     SubGhzProtocolDecoderBinRAW* instance = context;
 
-    if(instance->decoder.parser_step == BinRAWDecoderStepWrite) {
+    if(instance->parser_step == BinRAWDecoderStepWrite) {
         if(instance->data_raw_ind == BIN_RAW_BUF_RAW_SIZE) {
-            instance->decoder.parser_step = BinRAWDecoderStepBufFull;
+            instance->parser_step = BinRAWDecoderStepBufFull;
         } else {
             instance->data_raw[instance->data_raw_ind++] = (level ? duration : -duration);
         }
@@ -886,8 +888,8 @@ static bool
 void subghz_protocol_decoder_bin_raw_data_input_rssi(
     SubGhzProtocolDecoderBinRAW* instance,
     float rssi) {
-    furi_check(instance);
-    switch(instance->decoder.parser_step) {
+    // furi_check(instance);
+    switch(instance->parser_step) {
     case BinRAWDecoderStepReset:
 
         bin_raw_debug("%ld %ld :", (int32_t)rssi, (int32_t)instance->adaptive_threshold_rssi);
@@ -895,7 +897,7 @@ void subghz_protocol_decoder_bin_raw_data_input_rssi(
             instance->data_raw_ind = 0;
             memset(instance->data_raw, 0x00, BIN_RAW_BUF_RAW_SIZE * sizeof(int32_t));
             memset(instance->data, 0x00, BIN_RAW_BUF_RAW_SIZE * sizeof(uint8_t));
-            instance->decoder.parser_step = BinRAWDecoderStepWrite;
+            instance->parser_step = BinRAWDecoderStepWrite;
             bin_raw_debug_tag(TAG, "RSSI\r\n");
         } else {
             //adaptive noise level adjustment
@@ -921,7 +923,7 @@ void subghz_protocol_decoder_bin_raw_data_input_rssi(
             }
             bin_raw_debug("\r\n\t count data= %zu\r\n\r\n", instance->data_raw_ind);
 #endif
-            instance->decoder.parser_step = BinRAWDecoderStepReset;
+            instance->parser_step = BinRAWDecoderStepReset;
             instance->generic.data_count_bit = 0;
             if(instance->data_raw_ind >= BIN_RAW_BUF_MIN_DATA_COUNT) {
                 if(subghz_protocol_bin_raw_check_remote_controller(instance)) {
@@ -958,7 +960,7 @@ void subghz_protocol_decoder_bin_raw_data_input_rssi(
     default:
         //if instance->decoder.parser_step == BinRAWDecoderStepNoParse or others, restore the initial state
         if(rssi < instance->adaptive_threshold_rssi + BIN_RAW_DELTA_RSSI) {
-            instance->decoder.parser_step = BinRAWDecoderStepReset;
+            instance->parser_step = BinRAWDecoderStepReset;
         }
         break;
     }

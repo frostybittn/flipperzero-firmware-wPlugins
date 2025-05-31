@@ -76,3 +76,4 @@ RM*-*.txt
 RM*-*-*/
 RM-*.sh
 /%SystemDrive%
+lib/subghz/protocols/scher_khan.c

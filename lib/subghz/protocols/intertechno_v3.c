@@ -72,9 +72,8 @@ const SubGhzProtocolEncoder subghz_protocol_intertechno_v3_encoder = {
 const SubGhzProtocol subghz_protocol_intertechno_v3 = {
     .name = SUBGHZ_PROTOCOL_INTERTECHNO_V3_NAME,
     .type = SubGhzProtocolTypeStatic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_315 | SubGhzProtocolFlag_868 |
-            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load |
-            SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_intertechno_v3_decoder,
     .encoder = &subghz_protocol_intertechno_v3_encoder,

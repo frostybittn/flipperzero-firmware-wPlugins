@@ -27,7 +27,7 @@ static const SubGhzBlockConst subghz_protocol_secplus_v2_const = {
     .te_short = 250,
     .te_long = 500,
     .te_delta = 110,
-    .min_count_bit_for_found = 62,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderSecPlus_v2 {
@@ -80,7 +80,7 @@ const SubGhzProtocolEncoder subghz_protocol_secplus_v2_encoder = {
 const SubGhzProtocol subghz_protocol_secplus_v2 = {
     .name = SUBGHZ_PROTOCOL_SECPLUS_V2_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_secplus_v2_decoder,

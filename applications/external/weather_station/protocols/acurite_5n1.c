@@ -31,7 +31,7 @@ static const SubGhzBlockConst ws_protocol_acurite_5n1_const = {
     .te_short = 200,
     .te_long = 400,
     .te_delta = 90,
-    .min_count_bit_for_found = 64,
+    .min_count_bit_for_found = 61,
 };
 
 struct WSProtocolDecoderAcurite_5n1 {

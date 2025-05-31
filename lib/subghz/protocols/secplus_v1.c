@@ -86,8 +86,8 @@ const SubGhzProtocolEncoder subghz_protocol_secplus_v1_encoder = {
 const SubGhzProtocol subghz_protocol_secplus_v1 = {
     .name = SUBGHZ_PROTOCOL_SECPLUS_V1_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Send | SubGhzProtocolFlag_Save,
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_secplus_v1_decoder,
     .encoder = &subghz_protocol_secplus_v1_encoder,

@@ -1,5 +1,6 @@
 #include "scher_khan.h"
-
+#include <lib/toolbox/manchester_decoder.h>
+#include <lib/toolbox/manchester_encoder.h>
 #include "../blocks/const.h"
 #include "../blocks/decoder.h"
 #include "../blocks/encoder.h"
@@ -17,7 +18,7 @@ static const SubGhzBlockConst subghz_protocol_scher_khan_const = {
     .te_short = 750,
     .te_long = 1100,
     .te_delta = 150,
-    .min_count_bit_for_found = 35,
+    .min_count_bit_for_found = 31,
 };
 
 struct SubGhzProtocolDecoderScherKhan {
@@ -44,6 +45,13 @@ typedef enum {
     ScherKhanDecoderStepCheckDuration,
 } ScherKhanDecoderStep;
 
+// Forward declarations for encoder functions
+static void* subghz_protocol_encoder_scher_khan_alloc(SubGhzEnvironment* environment);
+static void subghz_protocol_encoder_scher_khan_free(void* context);
+static SubGhzProtocolStatus subghz_protocol_encoder_scher_khan_deserialize(void* context, FlipperFormat* flipper_format);
+static void subghz_protocol_encoder_scher_khan_stop(void* context);
+static LevelDuration subghz_protocol_encoder_scher_khan_yield(void* context);
+
 const SubGhzProtocolDecoder subghz_protocol_scher_khan_decoder = {
     .alloc = subghz_protocol_decoder_scher_khan_alloc,
     .free = subghz_protocol_decoder_scher_khan_free,
@@ -60,24 +68,26 @@ const SubGhzProtocolDecoder subghz_protocol_scher_khan_decoder = {
 };
 
 const SubGhzProtocolEncoder subghz_protocol_scher_khan_encoder = {
-    .alloc = NULL,
-    .free = NULL,
-
-    .deserialize = NULL,
-    .stop = NULL,
-    .yield = NULL,
+    .alloc = subghz_protocol_encoder_scher_khan_alloc,
+    .free = subghz_protocol_encoder_scher_khan_free,
+    .deserialize = subghz_protocol_encoder_scher_khan_deserialize,
+    .stop = subghz_protocol_encoder_scher_khan_stop,
+    .yield = subghz_protocol_encoder_scher_khan_yield,
 };
 
 const SubGhzProtocol subghz_protocol_scher_khan = {
     .name = SUBGHZ_PROTOCOL_SCHER_KHAN_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Save,
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_scher_khan_decoder,
     .encoder = &subghz_protocol_scher_khan_encoder,
+<<<<<<< Updated upstream
 
     .filter = SubGhzProtocolFilter_Alarms,
+=======
+>>>>>>> Stashed changes
 };
 
 void* subghz_protocol_decoder_scher_khan_alloc(SubGhzEnvironment* environment) {
@@ -320,4 +330,143 @@ void subghz_protocol_decoder_scher_khan_get_string(void* context, FuriString* ou
         instance->generic.btn,
         instance->generic.cnt,
         instance->protocol_name);
+}
+
+// Implementation of encoder functions
+
+static void* subghz_protocol_encoder_scher_khan_alloc(SubGhzEnvironment* environment) {
+    UNUSED(environment);
+    SubGhzProtocolEncoderScherKhan* instance = malloc(sizeof(SubGhzProtocolEncoderScherKhan));
+    instance->base.protocol = &subghz_protocol_scher_khan;
+    instance->generic.protocol_name = instance->base.protocol->name;
+    
+    // Initialize encoder specific fields
+    instance->encoder.upload = malloc(1024 * sizeof(LevelDuration)); // Or a more specific size
+    instance->encoder.size_upload = 0;
+    instance->encoder.repeat = 3; // Default repeat count
+    instance->encoder.is_running = false;
+
+    return instance;
+}
+
+static void subghz_protocol_encoder_scher_khan_free(void* context) {
+    furi_assert(context);
+    SubGhzProtocolEncoderScherKhan* instance = context;
+    free(instance->encoder.upload);
+    free(instance);
+}
+
+static SubGhzProtocolStatus subghz_protocol_encoder_scher_khan_deserialize(void* context, FlipperFormat* flipper_format) {
+    furi_assert(context);
+    SubGhzProtocolEncoderScherKhan* instance = context;
+    SubGhzProtocolStatus result = SubGhzProtocolStatusError;
+
+    // 1. Deserialize data into instance->generic
+    result = subghz_block_generic_deserialize(&instance->generic, flipper_format);
+    if (result != SubGhzProtocolStatusOk) {
+        FURI_LOG_E(TAG, "Error deserializing generic block");
+        return result;
+    }
+
+    // 2. Handle rolling counter for dynamic codes (e.g., 51-bit)
+    if (instance->generic.data_count_bit == 51) { // Assuming 51-bit is dynamic
+        uint32_t count_increment = furi_hal_subghz_get_rolling_counter_mult();
+        if (count_increment == 0) count_increment = 1;
+        
+        uint32_t initial_cnt = instance->generic.cnt;
+        instance->generic.cnt += count_increment;
+        if (instance->generic.cnt > 0xFFFF) { // Assuming 16-bit counter
+            instance->generic.cnt &= 0xFFFF; 
+        }
+        FURI_LOG_I(TAG, "Rolling count: %lu -> %lu (inc: %lu)", initial_cnt, instance->generic.cnt, count_increment);
+    }
+
+    // 3. Reconstruct the transmit_data payload based on protocol type (data_count_bit)
+    uint64_t transmit_data = 0;
+    bool payload_constructed = false;
+
+    if (instance->generic.data_count_bit == 51) { // MAGIC CODE, Dynamic
+        uint32_t serial_val = instance->generic.serial;
+        uint8_t btn_val = instance->generic.btn;
+        uint16_t cnt_val = instance->generic.cnt; // This is the already incremented counter
+        
+        transmit_data = (uint64_t)cnt_val;                                  // CNT (0-15)
+        transmit_data |= ((uint64_t)(serial_val & 0x0000000F) << 20);       // SER_LO (20-23)
+        transmit_data |= ((uint64_t)btn_val << 24);                         // BTN (24-27)
+        transmit_data |= ((uint64_t)((serial_val >> 4) & 0x07FFFFFF) << 28); // SER_HI (28-50)
+
+        payload_constructed = true;
+        FURI_LOG_I(TAG, "Constructed 51-bit payload: 0x%llX (Ser:0x%lX Btn:%X Cnt:%u)", transmit_data, serial_val, btn_val, cnt_val);
+
+    } else if (instance->generic.data_count_bit == 35) { // MAGIC CODE, Static
+        transmit_data = instance->generic.data;
+        payload_constructed = true;
+        FURI_LOG_I(TAG, "Using static 35-bit payload: 0x%llX", transmit_data);
+    } else {
+        FURI_LOG_E(TAG, "Unsupported bit count for encoding: %d", instance->generic.data_count_bit);
+        return SubGhzProtocolStatusError;
+    }
+
+    if(!payload_constructed) {
+        FURI_LOG_E(TAG, "Failed to construct payload.");
+        return SubGhzProtocolStatusErrorEncoderGetUpload;
+    }
+
+    // 4. Generate LevelDuration sequence
+    size_t index = 0;
+    for(int h = 0; h < 2; ++h) { 
+        instance->encoder.upload[index++] = level_duration_make(true, subghz_protocol_scher_khan_const.te_short * 2);
+        instance->encoder.upload[index++] = level_duration_make(false, subghz_protocol_scher_khan_const.te_short * 2);
+    }
+    instance->encoder.upload[index++] = level_duration_make(true, subghz_protocol_scher_khan_const.te_short);
+    instance->encoder.upload[index++] = level_duration_make(false, subghz_protocol_scher_khan_const.te_short);
+
+    for (uint8_t i = instance->generic.data_count_bit; i > 0; i--) {
+        if (bit_read(transmit_data, i - 1)) { 
+            instance->encoder.upload[index++] = level_duration_make(true, subghz_protocol_scher_khan_const.te_long);
+            instance->encoder.upload[index++] = level_duration_make(false, subghz_protocol_scher_khan_const.te_long);
+        } else { 
+            instance->encoder.upload[index++] = level_duration_make(true, subghz_protocol_scher_khan_const.te_short);
+            instance->encoder.upload[index++] = level_duration_make(false, subghz_protocol_scher_khan_const.te_short);
+        }
+    }
+
+    instance->encoder.upload[index++] = level_duration_make(true, subghz_protocol_scher_khan_const.te_long * 2);
+    instance->encoder.upload[index++] = level_duration_make(false, 0); 
+
+    instance->encoder.size_upload = index;
+    FURI_LOG_I(TAG, "Prepared %zu levels for %d bits", index, instance->generic.data_count_bit);
+    result = SubGhzProtocolStatusOk;
+    
+    if(result == SubGhzProtocolStatusOk) {
+        instance->encoder.is_running = true;
+    }
+    return result;
+}
+
+static void subghz_protocol_encoder_scher_khan_stop(void* context) {
+    SubGhzProtocolEncoderScherKhan* instance = context;
+    instance->encoder.is_running = false;
+}
+
+static LevelDuration subghz_protocol_encoder_scher_khan_yield(void* context) {
+    SubGhzProtocolEncoderScherKhan* instance = context;
+
+    if(instance->encoder.repeat == 0 || !instance->encoder.is_running || instance->encoder.size_upload == 0) {
+        instance->encoder.is_running = false;
+        return level_duration_reset(); // Signal end
+    }
+
+    LevelDuration ret = instance->encoder.upload[instance->encoder.front];
+    instance->encoder.front++;
+
+    if (instance->encoder.front >= instance->encoder.size_upload) {
+        instance->encoder.repeat--;
+        instance->encoder.front = 0;
+        if(instance->encoder.repeat == 0) {
+            instance->encoder.is_running = false;
+            // Optional: Increment counter here if it should only change after all repeats of one button press
+        }
+    }
+    return ret;
 }

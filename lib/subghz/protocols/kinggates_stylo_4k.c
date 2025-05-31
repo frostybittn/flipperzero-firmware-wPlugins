@@ -1,6 +1,7 @@
 #include "kinggates_stylo_4k.h"
 #include "keeloq_common.h"
-
+#include <lib/toolbox/manchester_decoder.h>
+#include <lib/toolbox/manchester_encoder.h>
 #include "../subghz_keystore.h"
 #include "../blocks/const.h"
 #include "../blocks/decoder.h"
@@ -11,10 +12,10 @@
 #define TAG "SubGhzProtocoKingGatesStylo4k"
 
 static const SubGhzBlockConst subghz_protocol_kinggates_stylo_4k_const = {
-    .te_short = 400,
-    .te_long = 1100,
+    .te_short = 500,
+    .te_long = 1000,
     .te_delta = 140,
-    .min_count_bit_for_found = 89,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderKingGates_stylo_4k {
@@ -70,7 +71,7 @@ const SubGhzProtocolEncoder subghz_protocol_kinggates_stylo_4k_encoder = {
 const SubGhzProtocol subghz_protocol_kinggates_stylo_4k = {
     .name = SUBGHZ_PROTOCOL_KINGGATES_STYLO_4K_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_kinggates_stylo_4k_decoder,

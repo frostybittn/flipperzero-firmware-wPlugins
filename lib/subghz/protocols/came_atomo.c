@@ -15,7 +15,7 @@ static const SubGhzBlockConst subghz_protocol_came_atomo_const = {
     .te_short = 600,
     .te_long = 1200,
     .te_delta = 250,
-    .min_count_bit_for_found = 62,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderCameAtomo {
@@ -66,7 +66,7 @@ const SubGhzProtocolEncoder subghz_protocol_came_atomo_encoder = {
 const SubGhzProtocol subghz_protocol_came_atomo = {
     .name = SUBGHZ_PROTOCOL_CAME_ATOMO_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_came_atomo_decoder,

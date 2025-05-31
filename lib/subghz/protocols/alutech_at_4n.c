@@ -12,10 +12,10 @@
 #define SUBGHZ_NO_ALUTECH_AT_4N_RAINBOW_TABLE 0xFFFFFFFF
 
 static const SubGhzBlockConst subghz_protocol_alutech_at_4n_const = {
-    .te_short = 400,
-    .te_long = 800,
-    .te_delta = 140,
-    .min_count_bit_for_found = 72,
+    .te_short = 450,
+    .te_long = 900,
+    .te_delta = 150,
+    .min_count_bit_for_found = 61,
 };
 
 struct SubGhzProtocolDecoderAlutech_at_4n {
@@ -74,7 +74,7 @@ const SubGhzProtocolEncoder subghz_protocol_alutech_at_4n_encoder = {
 const SubGhzProtocol subghz_protocol_alutech_at_4n = {
     .name = SUBGHZ_PROTOCOL_ALUTECH_AT_4N_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_alutech_at_4n_decoder,
