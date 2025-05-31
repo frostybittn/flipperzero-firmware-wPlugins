@@ -86,8 +86,11 @@ const SubGhzProtocol subghz_protocol_scher_khan = {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     .filter = SubGhzProtocolFilter_Alarms,
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
