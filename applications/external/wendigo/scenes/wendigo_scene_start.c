@@ -13,6 +13,7 @@ static const WendigoItem items[START_MENU_ITEMS] = {
 };
 
 #define SETUP_IDX       (0)
+#define SCAN_IDX        (1)
 #define SCAN_START_IDX  (0)
 #define SCAN_STOP_IDX   (1)
 #define SCAN_STATUS_IDX (2)
@@ -27,7 +28,7 @@ static uint8_t item_indexes[START_MENU_ITEMS] = {0};
    Defined and used in wendigo_scene_device_list.c */
 extern bool display_selected_only;
 
-/* Callback invoked when the action button is pressed on a menu item */
+/* Callback invoked when a menu item is selected */
 static void wendigo_scene_start_var_list_enter_callback(void* context, uint32_t index) {
     furi_assert(context);
     WendigoApp* app = context;
@@ -39,6 +40,7 @@ static void wendigo_scene_start_var_list_enter_callback(void* context, uint32_t 
 
     const int selected_option_index = app->selected_option_index[index];
     furi_assert(selected_option_index < item->num_options_menu);
+    // TODO: Remove these (I think)
     app->selected_tx_string = item->options_menu[selected_option_index];
     app->is_command = false;
     app->is_custom_tx_string = false;
@@ -63,12 +65,19 @@ static void wendigo_scene_start_var_list_enter_callback(void* context, uint32_t 
         if(selected_option_index == SCAN_START_IDX || selected_option_index == SCAN_STOP_IDX) {
             myItem = variable_item_list_get(app->var_item_list, SETUP_IDX);
             variable_item_set_locked(myItem, starting, LOCKED_MSG);
+            /* Set selected option to Stop when starting and Start when stopping */
+            myItem = variable_item_list_get(app->var_item_list, SCAN_IDX);
+            uint8_t newOption = (starting) ? SCAN_STOP_IDX : SCAN_START_IDX;
+            app->selected_option_index[index] = newOption;
+            variable_item_set_current_value_index(myItem, newOption);
+            variable_item_set_current_value_text(myItem, item->options_menu[newOption]);
             wendigo_set_scanning_active(app, starting);
+        } else if(selected_option_index == SCAN_STATUS_IDX) {
+            view_dispatcher_send_custom_event(app->view_dispatcher, Wendigo_EventDisplayStatus);
+            return;
         }
         break;
     case LIST_DEVICES:
-        // Try to fit name, BDA and CoD on the var_list
-        // Allow selecting a device to obtain more information: remaining attributes, tag/untag, services, maybe some transmit options
         display_selected_only = false;
         view_dispatcher_send_custom_event(app->view_dispatcher, Wendigo_EventListDevices);
         return;
@@ -118,7 +127,6 @@ static void wendigo_scene_start_var_list_change_callback(VariableItem* item) {
 /* Callback invoked when the view is launched */
 void wendigo_scene_start_on_enter(void* context) {
     WendigoApp* app = context;
-    VariableItemList* var_item_list = app->var_item_list;
     app->current_view = WendigoAppViewVarItemList;
 
     for(int i = 0; i < START_MENU_ITEMS; ++i) {
@@ -126,11 +134,11 @@ void wendigo_scene_start_on_enter(void* context) {
     }
 
     variable_item_list_set_enter_callback(
-        var_item_list, wendigo_scene_start_var_list_enter_callback, app);
+        app->var_item_list, wendigo_scene_start_var_list_enter_callback, app);
 
     VariableItem* item;
     menu_items_num = 0;
-    for(int i = 0; i < START_MENU_ITEMS; ++i) {
+    for(uint8_t i = 0; i < START_MENU_ITEMS; ++i) {
         bool enabled = false;
         if(app->hex_mode && (items[i].mode_mask & HEX_MODE)) {
             enabled = true;
@@ -141,7 +149,7 @@ void wendigo_scene_start_on_enter(void* context) {
 
         if(enabled) {
             item = variable_item_list_add(
-                var_item_list,
+                app->var_item_list,
                 items[i].item_string,
                 items[i].num_options_menu,
                 wendigo_scene_start_var_list_change_callback,
@@ -159,7 +167,7 @@ void wendigo_scene_start_on_enter(void* context) {
     }
 
     variable_item_list_set_selected_item(
-        var_item_list, scene_manager_get_scene_state(app->scene_manager, WendigoSceneStart));
+        app->var_item_list, scene_manager_get_scene_state(app->scene_manager, WendigoSceneStart));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, WendigoAppViewVarItemList);
 }
@@ -200,6 +208,11 @@ bool wendigo_scene_start_on_event(void* context, SceneManagerEvent event) {
             scene_manager_set_scene_state(
                 app->scene_manager, WendigoSceneStart, app->selected_menu_index);
             scene_manager_next_scene(app->scene_manager, WendigoSceneDeviceList);
+            break;
+        case Wendigo_EventDisplayStatus:
+            scene_manager_set_scene_state(
+                app->scene_manager, WendigoSceneStart, app->selected_menu_index);
+            scene_manager_next_scene(app->scene_manager, WendigoSceneStatus);
             break;
         default:
             // Do nothing

@@ -14,8 +14,18 @@
 #include <gui/modules/text_input.h>
 #include <gui/modules/byte_input.h>
 #include <gui/modules/popup.h>
+#include <furi_hal_rtc.h>
+#include <sys/time.h>
+
 #include "wendigo_hex_input.h"
 
+#define IS_FLIPPER_APP (1)
+
+#include "wendigo_common_defs.h"
+
+/* How frequently should Flipper poll ESP32 when scanning to restart
+   scanning in the event the device restarts (seconds)? */
+#define ESP32_POLL_INTERVAL      (3)
 #define START_MENU_ITEMS         (6)
 #define SETUP_MENU_ITEMS         (4)
 #define SETUP_CHANNEL_MENU_ITEMS (13)
@@ -34,8 +44,13 @@
 #define WENDIGO_TEXT_BOX_STORE_SIZE   (4096)
 #define WENDIGO_TEXT_INPUT_STORE_SIZE (512)
 
-#define MAC_BYTES  (6)
-#define MAC_STRLEN (17)
+typedef enum DeviceMask {
+    DEVICE_BT_CLASSIC = 1,
+    DEVICE_BT_LE = 2,
+    DEVICE_WIFI_AP = 4,
+    DEVICE_WIFI_STA = 8,
+    DEVICE_ALL = 15
+} DeviceMask;
 
 // Command action type
 typedef enum {
@@ -83,10 +98,12 @@ typedef enum {
     WendigoAppViewVarItemList,
     WendigoAppViewDeviceList,
     WendigoAppViewDeviceDetail,
-    WendigoAppViewConsoleOutput,
+    WendigoAppViewStatus, /* This doesn't have a view but is used as a flag in app->current_view */
+    WendigoAppViewConsoleOutput, // TODO: Consider whether there's a better way to flag the status view
     WendigoAppViewTextInput,
     WendigoAppViewHexInput,
     WendigoAppViewHelp,
+    WendigoAppViewSetup, /* This doesn't have an associated view but is used as a flag in app->current_view */
     WendigoAppViewSetupMAC,
     WendigoAppViewSetupChannel,
     WendigoAppViewPopup,
@@ -97,13 +114,8 @@ struct WendigoApp {
     ViewDispatcher* view_dispatcher;
     SceneManager* scene_manager;
     WendigoAppView current_view;
+    bool is_scanning;
 
-    char text_input_store[WENDIGO_TEXT_INPUT_STORE_SIZE + 1];
-    FuriString* text_box_store;
-    size_t text_box_store_strlen;
-    TextBox* text_box;
-    TextInput* text_input;
-    Wendigo_TextInput* hex_input;
     Widget* widget;
     VariableItemList* var_item_list;
     VariableItemList* devices_var_item_list;
@@ -113,16 +125,25 @@ struct WendigoApp {
     Popup* popup; // Avoid continual allocation and freeing of Popup by initialising at launch
     WendigoRadio interfaces[IF_COUNT];
     InterfaceType active_interface;
-    // TODO: Revise these attributes - Remove what I can, change ints (32 bits) to uint8 or uint16
-    int setup_selected_menu_index;
-    int device_list_selected_menu_index;
-    int device_detail_selected_menu_index;
-    int setup_selected_option_index[SETUP_MENU_ITEMS];
-    int selected_menu_index;
-    int selected_option_index[START_MENU_ITEMS];
-    const char* selected_tx_string;
+    int32_t last_packet;
 
-    bool is_scanning;
+    uint8_t setup_selected_menu_index;
+    uint16_t device_list_selected_menu_index;
+    uint8_t setup_selected_option_index[SETUP_MENU_ITEMS];
+    uint8_t selected_menu_index;
+    uint8_t selected_option_index[START_MENU_ITEMS];
+    uint16_t channel_mask;
+    uint16_t CH_MASK[SETUP_CHANNEL_MENU_ITEMS + 1];
+
+    // TODO: Review these attributes - Remove what I can as remnants of the past
+    char text_input_store[WENDIGO_TEXT_INPUT_STORE_SIZE + 1];
+    FuriString* text_box_store;
+    size_t text_box_store_strlen;
+    TextBox* text_box;
+    TextInput* text_input;
+    Wendigo_TextInput* hex_input;
+
+    const char* selected_tx_string;
     bool is_command;
     bool is_custom_tx_string;
     bool hex_mode;
@@ -131,9 +152,6 @@ struct WendigoApp {
     int BAUDRATE;
     int NEW_BAUDRATE;
     int TERMINAL_MODE; //1=AT mode, 0=other mode
-
-    uint16_t channel_mask;
-    uint16_t CH_MASK[SETUP_CHANNEL_MENU_ITEMS + 1];
 };
 
 /* Public methods from wendigo_app.c */

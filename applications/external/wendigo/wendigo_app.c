@@ -24,6 +24,14 @@ static bool wendigo_app_back_event_callback(void* context) {
 static void wendigo_app_tick_event_callback(void* context) {
     furi_assert(context);
     WendigoApp* app = context;
+    if(app->is_scanning) {
+        /* Is it time to poll ESP32 to ensure it's still scanning? */
+        int32_t now = furi_hal_rtc_get_timestamp();
+        if(now - app->last_packet > ESP32_POLL_INTERVAL) {
+            wendigo_set_scanning_active(app, true);
+        }
+    }
+
     scene_manager_handle_tick_event(app->scene_manager);
 }
 
@@ -41,7 +49,7 @@ void wendigo_popup_callback(void* context) {
 void wendigo_display_popup(WendigoApp* app, char* header, char* body) {
     popup_set_header(app->popup, header, 64, 3, AlignCenter, AlignTop);
     popup_set_text(app->popup, body, 64, 22, AlignCenter, AlignTop);
-    popup_set_icon(app->popup, -1, -1, NULL);
+    popup_set_icon(app->popup, -1, -1, NULL); // TODO: Find a fun icon to use
     popup_set_timeout(app->popup, 2000);
     popup_enable_timeout(app->popup);
     popup_set_callback(app->popup, wendigo_popup_callback);
@@ -98,11 +106,11 @@ WendigoApp* wendigo_app_alloc() {
         app->setup_selected_option_index[i] = 0;
     }
 
-    /* Initialise the channel bitmasks */
+    /* Initialise the channel bitmasks - pow() is slow so hardcode 0 & 1 and use multiplication for the rest */
     app->CH_MASK[0] = 0;
-    for(int i = 1; i <= SETUP_CHANNEL_MENU_ITEMS; ++i) {
-        // TODO YAGNI: pow() is slow. Seed CH_MASK[1] and calculate the rest by multiplying the previous element by 2
-        app->CH_MASK[i] = pow(2, i - 1);
+    app->CH_MASK[1] = 1;
+    for(int i = 2; i <= SETUP_CHANNEL_MENU_ITEMS; ++i) {
+        app->CH_MASK[i] = app->CH_MASK[i - 1] * 2;
     }
 
     /* Default to enabling all channels */
@@ -153,6 +161,9 @@ WendigoApp* wendigo_app_alloc() {
         WendigoAppViewDeviceList,
         variable_item_list_get_view(app->devices_var_item_list));
 
+    /* Initialise the last packet received time */
+    app->last_packet = furi_hal_rtc_get_timestamp();
+
     scene_manager_next_scene(app->scene_manager, WendigoSceneStart);
 
     return app;
@@ -187,7 +198,7 @@ void wendigo_app_free(WendigoApp* app) {
 
     /* Free device cache and UART buffer */
     wendigo_free_uart_buffer();
-    wendigo_free_bt_devices();
+    wendigo_free_devices();
     // TODO: WiFi device cache
 
     wendigo_uart_free(app->uart);

@@ -6,6 +6,7 @@
 #include <gui/view.h>
 #include <gui/view_dispatcher.h>
 #include <gui/view_stack.h>
+#include <gui/modules/dialog_ex.h>
 #include <gui/modules/variable_item_list.h>
 #include <hvac_hitachi.h>
 #include <notification/notification_messages.h>
@@ -26,6 +27,7 @@ typedef enum {
 } PowerButtonState;
 
 typedef enum {
+    ModeButtonAuto,
     ModeButtonHeating,
     ModeButtonCooling,
     ModeButtonDehumidifying,
@@ -68,6 +70,23 @@ typedef enum {
     TIMER_STATE_COUNT,
 } TimerState;
 
+typedef enum {
+    SettingsSideA,
+    SettingsSideB,
+    SETTINGS_SIDE_COUNT,
+} SettingsSide;
+
+typedef enum {
+    SettingsTimerStep1min,
+    SettingsTimerStep2min,
+    SettingsTimerStep3min,
+    SettingsTimerStep5min,
+    SettingsTimerStep10min,
+    SettingsTimerStep15min,
+    SettingsTimerStep30min,
+    SETTINGS_TIMER_STEP_COUNT,
+} SettingsTimerStep;
+
 typedef struct {
     uint32_t on;
     uint32_t off;
@@ -84,6 +103,9 @@ typedef struct {
     TimerOnOffState timer_pause;
     uint32_t timer_on_expires_at;
     uint32_t timer_off_expires_at;
+    uint32_t side;
+    uint32_t timer_step;
+    bool allow_auto;
 } ACRemoteAppSettings;
 
 typedef struct {
@@ -107,6 +129,7 @@ struct AC_RemoteApp {
     ACRemotePanel* panel_main;
     ACRemotePanel* panel_sub;
     VariableItemList* vil_settings;
+    DialogEx* dex_reset_confirm;
     ACRemoteAppSettings app_state;
     ACRemoteTransientState transient_state;
     HvacHitachiContext* protocol;
@@ -116,6 +139,9 @@ typedef enum {
     AC_RemoteAppViewMain,
     AC_RemoteAppViewSub,
     AC_RemoteAppViewSettings,
+    AC_RemoteAppViewResetConfirm,
 } AC_RemoteAppView;
+
+void ac_remote_reset_settings(AC_RemoteApp* const app);
 
 #define LABEL_STRING_SIZE sizeof(ac_remote->label_string_pool[0])

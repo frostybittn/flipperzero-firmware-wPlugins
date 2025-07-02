@@ -278,7 +278,7 @@ const SubGhzProtocol subghz_protocol_kia = {
     .decoder = &subghz_protocol_kia_decoder,
     .encoder = &subghz_protocol_kia_encoder,
 
-    .filter = SubGhzProtocolFilter_Alarms,
+    .filter = SubGhzProtocolFilter_Cars,
 };
 
 =======

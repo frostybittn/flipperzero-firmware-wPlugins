@@ -1,16 +1,15 @@
 #include "../wendigo_app_i.h"
 #include "../wendigo_scan.h"
 
-flipper_bt_device* device = NULL;
+wendigo_device* device = NULL;
 
-void wendigo_scene_device_detail_set_device(flipper_bt_device* d) {
+void wendigo_scene_device_detail_set_device(wendigo_device* d) {
     device = d;
 }
 
 static void wendigo_scene_device_detail_var_list_enter_callback(void* context, uint32_t index) {
     furi_assert(context);
     WendigoApp* app = context;
-    app->current_view = WendigoAppViewDeviceDetail;
 
     //    furi_assert(index < ((display_selected_only) ? bt_selected_devices_count : bt_devices_count));
 
@@ -28,15 +27,12 @@ static void wendigo_scene_device_detail_var_list_change_callback(VariableItem* i
 
     uint8_t item_index = variable_item_get_current_value_index(item);
     UNUSED(item_index);
-    //    furi_assert(item_index < bt_devices_count);
-    // TODO: The following will be useful for managing tag options (on/off)
-    // variable_item_set_current_value_text(item, menu_item->options_menu[item_index]);
-    // app->setup_selected_option_index[app->setup_selected_menu_index] = item_index;
 }
 
 void wendigo_scene_device_detail_on_enter(void* context) {
     WendigoApp* app = context;
     VariableItemList* var_item_list = app->detail_var_item_list;
+    app->current_view = WendigoAppViewDeviceDetail;
 
     variable_item_list_set_enter_callback(
         var_item_list, wendigo_scene_device_detail_var_list_enter_callback, app);
@@ -58,14 +54,13 @@ void wendigo_scene_device_detail_on_enter(void* context) {
 bool wendigo_scene_device_detail_on_event(void* context, SceneManagerEvent event) {
     WendigoApp* app = context;
     bool consumed = false;
+    UNUSED(app);
 
     if(event.type == SceneManagerEventTypeCustom) {
         switch(event.event) {
         case Wendigo_EventListDevices:
-            scene_manager_set_scene_state(
-                app->scene_manager,
-                WendigoSceneDeviceDetail,
-                app->device_detail_selected_menu_index);
+            // scene_manager_set_scene_state(
+            //     app->scene_manager, WendigoSceneDeviceDetail, app->device_detail_selected_menu_index);
             //scene_manager_next_scene(app->scene_manager, WendigoSceneDeviceDetail);
             break;
         default:
@@ -74,8 +69,8 @@ bool wendigo_scene_device_detail_on_event(void* context, SceneManagerEvent event
         }
         consumed = true;
     } else if(event.type == SceneManagerEventTypeTick) {
-        app->device_detail_selected_menu_index =
-            variable_item_list_get_selected_item_index(app->detail_var_item_list);
+        // app->device_detail_selected_menu_index =
+        //     variable_item_list_get_selected_item_index(app->detail_var_item_list);
         consumed = true;
     }
     return consumed;

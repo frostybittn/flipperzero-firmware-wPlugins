@@ -34,7 +34,8 @@ typedef struct {
     bool is_nrf24_connected;
     bool close_thread_please;
     bool select_file_on_next_render;
-    uint8_t jam_type; // 0:narrow, 1:wide, 2:all, 3:custom
+    uint8_t wifi_channel;
+    uint8_t jam_type; // 0:narrow, 1:wide, 2:all, 3:WiFi, 4:custom
     FuriThread* jam_thread;
 } PluginState;
 
@@ -53,7 +54,8 @@ uint8_t hopping_channels_2[128];
 uint8_t hopping_channels_1[] = {32, 34, 46, 48, 50, 52, 0,  1,  2,  4,  6,  8,
                                 22, 24, 26, 28, 30, 74, 76, 78, 80, 82, 84, 86};
 uint8_t hopping_channels_0[] = {2, 26, 80};
-uint8_t hopping_channels_len[] = {3, 24, 42, 0};
+uint8_t hopping_channels_3[] = {12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72};
+uint8_t hopping_channels_len[] = {3, 24, 42, 12, 0};
 
 int parse_custom_list(char* input, uint8_t** out_arr) {
     // Make a copy of the input string, because strtok modifies it
@@ -91,7 +93,7 @@ int parse_custom_list(char* input, uint8_t** out_arr) {
     return count; // number of integers parsed
 }
 
-char* jam_types[] = {"narrow", "wide", "full", "custom"};
+char* jam_types[] = {"narrow", "wide", "full", "WiFi", "custom"};
 uint8_t* hopping_channels;
 int hopping_channels_custom_len = 0;
 uint8_t* hopping_channels_custom_arr = NULL;
@@ -107,15 +109,23 @@ static void render_callback(Canvas* const canvas, void* ctx) {
     canvas_set_font(canvas, FontSecondary);
 
     char tmp[128];
-    snprintf(tmp, 128, "^ type:%s", jam_types[plugin_state->jam_type]);
+    if(plugin_state->jam_type == 3)
+        snprintf(
+            tmp,
+            128,
+            "^ type:%s > channel:%d",
+            jam_types[plugin_state->jam_type],
+            plugin_state->wifi_channel + 1);
+    else
+        snprintf(tmp, 128, "^ type:%s", jam_types[plugin_state->jam_type]);
     canvas_draw_str_aligned(canvas, 10, 3, AlignLeft, AlignTop, tmp);
 
-    if(!plugin_state->is_thread_running && plugin_state->jam_type <= 3) {
+    if(!plugin_state->is_thread_running && plugin_state->jam_type <= 4) {
         canvas_set_font(canvas, FontSecondary);
         canvas_draw_str_aligned(
             canvas, 10, 20, AlignLeft, AlignBottom, "Press Ok button to start");
 
-        if(plugin_state->jam_type == 3) {
+        if(plugin_state->jam_type == 4) {
             canvas_draw_str(canvas, 80, 30, "select file >");
         }
 
@@ -123,7 +133,7 @@ static void render_callback(Canvas* const canvas, void* ctx) {
             canvas_draw_str_aligned(
                 canvas, 10, 30, AlignLeft, AlignBottom, "Connect NRF24 to GPIO!");
         }
-    } else if(plugin_state->is_thread_running && plugin_state->jam_type <= 3) {
+    } else if(plugin_state->is_thread_running && plugin_state->jam_type <= 4) {
         canvas_set_font(canvas, FontSecondary);
         canvas_draw_str_aligned(canvas, 3, 30, AlignLeft, AlignBottom, "Causing mayhem...");
         canvas_draw_str_aligned(canvas, 3, 40, AlignLeft, AlignBottom, "Please wait!");
@@ -158,88 +168,85 @@ static void jammer_state_init(PluginState* const plugin_state) {
 static int32_t mj_worker_thread(void* ctx) {
     PluginState* plugin_state = ctx;
     plugin_state->is_thread_running = true;
-    FURI_LOG_D(TAG, "starting to jam");
-    char tmp[128];
-    // make sure the NRF24 is powered down so we can do all the initial setup
-    nrf24_set_idle(nrf24_HANDLE);
-    uint8_t mac[] = {0xDE, 0xAD}; // DEAD BEEF FEED
-    uint8_t ping_packet[] = {
-        0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE,
-        0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD,
-        0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF}; // 32 bytes, in case we ever need to experiment with bigger packets
-
-    uint8_t conf = 0;
-
-    nrf24_configure(nrf24_HANDLE, 2, mac, mac, 2, 1, true, true);
-    // set PA level to maximum
-    uint8_t setup;
-    nrf24_read_reg(nrf24_HANDLE, REG_RF_SETUP, &setup, 1);
-
-    setup &= 0xF8;
-    setup |= 7;
-
-    snprintf(tmp, 128, "NRF24 SETUP REGISTER: %d", setup);
-    FURI_LOG_D(TAG, tmp);
-
-    nrf24_read_reg(nrf24_HANDLE, REG_CONFIG, &conf, 1);
-    snprintf(tmp, 128, "NRF24 CONFIG REGISTER: %d", conf);
-    FURI_LOG_D(TAG, tmp);
-    nrf24_write_reg(nrf24_HANDLE, REG_RF_SETUP, setup);
 
 #define size 32
-    uint8_t status = 0;
-    uint8_t tx[size + 1];
-    uint8_t rx[size + 1];
-    memset(tx, 0, size + 1);
-    memset(rx, 0, size + 1);
+    uint8_t tx[size + 1] = {0};
 
-    tx[0] = W_TX_PAYLOAD_NOACK;
+    FURI_LOG_D(TAG, "Starting optimized carrier jamming");
 
-    memcpy(&tx[1], ping_packet, size);
+    if(plugin_state->jam_type == 3) {
+        char tmp[128];
+
+        nrf24_set_idle(nrf24_HANDLE);
+
+        uint8_t mac[] = {0xDE, 0xAD}; // DEAD BEEF FEED
+
+        uint8_t ping_packet[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE,
+                                 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD,
+                                 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF};
+
+        nrf24_configure(nrf24_HANDLE, 2, mac, mac, 2, 1, true, true);
+
+        uint8_t setup;
+        nrf24_read_reg(nrf24_HANDLE, REG_RF_SETUP, &setup, 1);
+        setup = (setup & 0xF8) | 7;
+        nrf24_write_reg(nrf24_HANDLE, REG_RF_SETUP, setup);
+
+        uint8_t conf;
+        nrf24_read_reg(nrf24_HANDLE, REG_CONFIG, &conf, 1);
+        snprintf(tmp, sizeof(tmp), "NRF24 SETUP REGISTER: %d", setup);
+        FURI_LOG_D(TAG, tmp);
+        snprintf(tmp, sizeof(tmp), "NRF24 CONFIG REGISTER: %d", conf);
+        FURI_LOG_D(TAG, tmp);
+
+        tx[0] = W_TX_PAYLOAD_NOACK;
+        memcpy(&tx[1], ping_packet, size);
 
 #define nrf24_TIMEOUT 500
-    // push data to the TX register
-    nrf24_spi_trx(nrf24_HANDLE, tx, 0, size + 1, nrf24_TIMEOUT);
-    // put the module in TX mode
-    nrf24_set_tx_mode(nrf24_HANDLE);
-    // send one test packet (for debug reasons)
-    while(!(status & (TX_DS | MAX_RT))) {
-        status = nrf24_status(nrf24_HANDLE);
-        snprintf(tmp, 128, "NRF24 STATUS REGISTER: %d", status);
-
-        FURI_LOG_D(TAG, tmp);
     }
-    NotificationApp* notification = furi_record_open(RECORD_NOTIFICATION);
 
-    uint8_t chan = 0;
-    uint8_t limit = 0;
+    NotificationApp* notification = furi_record_open(RECORD_NOTIFICATION);
     notification_message(notification, &sequence_blink_red_100);
 
-    do {
-        limit = hopping_channels_len[plugin_state->jam_type];
-        for(int ch = 0; ch < limit; ch++) {
-            chan = hopping_channels[ch];
-            // change channel
-            nrf24_write_reg(nrf24_HANDLE, REG_RF_CH, chan);
-            // push new data to the TX register
-            nrf24_spi_trx(nrf24_HANDLE, tx, 0, 3, nrf24_TIMEOUT);
+    nrf24_set_tx_mode(nrf24_HANDLE);
+
+    if(plugin_state->jam_type != 3) nrf24_startConstCarrier(nrf24_HANDLE, 3, hopping_channels[0]);
+
+    uint8_t current_channel = 0;
+    uint8_t limit = hopping_channels_len[plugin_state->jam_type];
+
+    while(!plugin_state->close_thread_please) {
+        for(int ch = 0; ch < limit && !plugin_state->close_thread_please; ch++) {
+            current_channel = hopping_channels[ch];
+            if(plugin_state->jam_type == 3) {
+                for(int wifi_ch = (plugin_state->wifi_channel * 5) + 1;
+                    wifi_ch < (plugin_state->wifi_channel * 5) + 23 &&
+                    !plugin_state->close_thread_please;
+                    wifi_ch++) {
+                    nrf24_write_reg(nrf24_HANDLE, REG_RF_CH, wifi_ch);
+                    nrf24_spi_trx(nrf24_HANDLE, tx, 0, 3, nrf24_TIMEOUT);
+                }
+            } else
+                nrf24_write_reg(nrf24_HANDLE, REG_RF_CH, current_channel);
         }
-    } while(!plugin_state->close_thread_please);
+    }
+
+    if(plugin_state->jam_type != 3) nrf24_stopConstCarrier(nrf24_HANDLE);
 
     furi_record_close(RECORD_NOTIFICATION);
-
     plugin_state->is_thread_running = false;
-    nrf24_set_idle(nrf24_HANDLE);
     return 0;
 }
 
 int32_t jammer_app(void* p) {
     UNUSED(p);
+    if(!furi_hal_power_is_otg_enabled()) furi_hal_power_enable_otg();
     FuriMessageQueue* event_queue = furi_message_queue_alloc(8, sizeof(PluginEvent));
     dolphin_deed(DolphinDeedPluginStart);
     PluginState* plugin_state = malloc(sizeof(PluginState));
     jammer_state_init(plugin_state);
     plugin_state->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+    plugin_state->wifi_channel = 0;
     if(!plugin_state->mutex) {
         FURI_LOG_E("jammer", "cannot create mutex\r\n");
         furi_message_queue_free(event_queue);
@@ -277,7 +284,6 @@ int32_t jammer_app(void* p) {
 
     for(bool processing = true; processing;) {
         FuriStatus event_status = furi_message_queue_get(event_queue, &event, 100);
-
         if(event_status == FuriStatusOk) {
             // press events
             if(event.type == EventTypeKey) {
@@ -287,7 +293,7 @@ int32_t jammer_app(void* p) {
                     switch(event.input.key) {
                     case InputKeyUp:
                         if(!plugin_state->is_thread_running) {
-                            plugin_state->jam_type = (plugin_state->jam_type + 1) % 4;
+                            plugin_state->jam_type = (plugin_state->jam_type + 1) % 5;
 
                             switch(plugin_state->jam_type) {
                             case 0:
@@ -300,6 +306,9 @@ int32_t jammer_app(void* p) {
                                 hopping_channels = hopping_channels_2;
                                 break;
                             case 3:
+                                hopping_channels = hopping_channels_3;
+                                break;
+                            case 4:
                                 hopping_channels = hopping_channels_custom_arr;
                             default:
                                 break;
@@ -309,9 +318,34 @@ int32_t jammer_app(void* p) {
                         }
                         break;
                     case InputKeyDown:
+                        if(!plugin_state->is_thread_running) {
+                            plugin_state->jam_type =
+                                (plugin_state->jam_type == 0) ? 4 : (plugin_state->jam_type - 1);
+
+                            switch(plugin_state->jam_type) {
+                            case 0:
+                                hopping_channels = hopping_channels_0;
+                                break;
+                            case 1:
+                                hopping_channels = hopping_channels_1;
+                                break;
+                            case 2:
+                                hopping_channels = hopping_channels_2;
+                                break;
+                            case 3:
+                                hopping_channels = hopping_channels_3;
+                                break;
+                            case 4:
+                                hopping_channels = hopping_channels_custom_arr;
+                            default:
+                                break;
+                            }
+
+                            view_port_update(view_port);
+                        }
                         break;
                     case InputKeyRight:
-                        if(plugin_state->jam_type == 3) {
+                        if(plugin_state->jam_type == 4 && !plugin_state->is_thread_running) {
                             DialogsApp* dialogs = furi_record_open("dialogs");
                             Storage* storage = furi_record_open(RECORD_STORAGE);
                             plugin_state->select_file_on_next_render = true;
@@ -376,13 +410,23 @@ int32_t jammer_app(void* p) {
                             furi_string_free(path);
 
                             view_port_update(view_port);
+                        } else if(plugin_state->jam_type == 3 && !plugin_state->is_thread_running) {
+                            plugin_state->wifi_channel = (plugin_state->wifi_channel + 1) % 13;
+                            view_port_update(view_port);
                         }
                         break;
                     case InputKeyLeft:
+                        if(plugin_state->jam_type == 3 && !plugin_state->is_thread_running) {
+                            plugin_state->wifi_channel = (plugin_state->wifi_channel == 0) ?
+                                                             12 :
+                                                             (plugin_state->wifi_channel - 1);
+                            view_port_update(view_port);
+                        }
                         break;
                     case InputKeyOk:
                         if(!plugin_state->is_thread_running) {
-                            if(!nrf24_check_connected(nrf24_HANDLE)) {
+                            if(!nrf24_check_connected(nrf24_HANDLE) ||
+                               !plugin_state->is_nrf24_connected) {
                                 plugin_state->is_nrf24_connected = false;
                                 notification_message(notification, &sequence_error);
                             } else {
@@ -422,6 +466,7 @@ int32_t jammer_app(void* p) {
     furi_thread_free(plugin_state->jam_thread);
     FURI_LOG_D(TAG, "nrf24 deinit...");
     nrf24_deinit();
+    furi_hal_power_disable_otg();
     view_port_enabled_set(view_port, false);
     gui_remove_view_port(gui, view_port);
     furi_record_close(RECORD_GUI);

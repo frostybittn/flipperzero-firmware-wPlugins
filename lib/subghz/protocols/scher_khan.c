@@ -88,15 +88,7 @@ const SubGhzProtocol subghz_protocol_scher_khan = {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
-    .filter = SubGhzProtocolFilter_Alarms,
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+    .filter = SubGhzProtocolFilter_Cars,
 };
 
 void* subghz_protocol_decoder_scher_khan_alloc(SubGhzEnvironment* environment) {
