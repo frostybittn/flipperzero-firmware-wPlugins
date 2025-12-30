@@ -1,7 +1,0 @@
-Filetype: Flipper SubGhz RAW File
-Version: 1
-Frequency: 433920000
-Preset: FuriHalSubGhzPresetOok270Async
-Protocol: RAW
-RAW_Data: -10000
-RAW_Data: 75400 -725 725 -725 725 -725 725 -725 725 -725 725 -725 1450 -1450 1450 -1450 1450 -10000

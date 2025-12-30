@@ -1,7 +1,0 @@
-Filetype: Flipper SubGhz RAW File
-Version: 1
-Frequency: 433920000
-Preset: FuriHalSubGhzPreset2FSKDev238Async
-Protocol: RAW
-RAW_Data: -10000
-RAW_Data: -66 132 -3828 330 -132 330 -132 66 -66 132 -66 132 -66 -10000
