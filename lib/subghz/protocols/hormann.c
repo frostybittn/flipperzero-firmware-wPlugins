@@ -67,8 +67,9 @@ const SubGhzProtocolEncoder subghz_protocol_hormann_encoder = {
 const SubGhzProtocol subghz_protocol_hormann = {
     .name = SUBGHZ_PROTOCOL_HORMANN_HSM_NAME,
     .type = SubGhzProtocolTypeStatic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
+            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
+            SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_hormann_decoder,
     .encoder = &subghz_protocol_hormann_encoder,
@@ -159,6 +160,7 @@ SubGhzProtocolStatus
             flipper_format, "Repeat", (uint32_t*)&instance->encoder.repeat, 1);
 
         if(!subghz_protocol_encoder_hormann_get_upload(instance)) {
+            instance->encoder.front = 0; // reset position before start
             ret = SubGhzProtocolStatusErrorEncoderGetUpload;
             break;
         }
@@ -171,6 +173,7 @@ SubGhzProtocolStatus
 void subghz_protocol_encoder_hormann_stop(void* context) {
     SubGhzProtocolEncoderHormann* instance = context;
     instance->encoder.is_running = false;
+    instance->encoder.front = 0; // reset position
 }
 
 LevelDuration subghz_protocol_encoder_hormann_yield(void* context) {

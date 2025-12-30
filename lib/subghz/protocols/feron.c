@@ -61,7 +61,7 @@ const SubGhzProtocolEncoder subghz_protocol_feron_encoder = {
 const SubGhzProtocol subghz_protocol_feron = {
     .name = SUBGHZ_PROTOCOL_FERON_NAME,
     .type = SubGhzProtocolTypeStatic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_feron_decoder,
@@ -169,6 +169,7 @@ SubGhzProtocolStatus
 
         subghz_protocol_feron_check_remote_controller(&instance->generic);
         subghz_protocol_encoder_feron_get_upload(instance);
+        instance->encoder.front = 0;
         instance->encoder.is_running = true;
     } while(false);
 
@@ -178,6 +179,7 @@ SubGhzProtocolStatus
 void subghz_protocol_encoder_feron_stop(void* context) {
     SubGhzProtocolEncoderFeron* instance = context;
     instance->encoder.is_running = false;
+    instance->encoder.front = 0;
 }
 
 LevelDuration subghz_protocol_encoder_feron_yield(void* context) {

@@ -69,7 +69,7 @@ const SubGhzProtocolEncoder subghz_protocol_dickert_mahs_encoder = {
 const SubGhzProtocol subghz_protocol_dickert_mahs = {
     .name = SUBGHZ_PROTOCOL_DICKERT_MAHS_NAME,
     .type = SubGhzProtocolTypeStatic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_dickert_mahs_decoder,
@@ -290,8 +290,9 @@ void subghz_protocol_decoder_dickert_mahs_feed(void* context, bool level, uint32
             instance->decoder.decode_count_bit = 0;
         }
 
-        if((!level) && (duration > 10 * subghz_protocol_dickert_mahs_const.te_short)) {
-            //Found header DICKERT_MAHS
+        if((!level) && (DURATION_DIFF(duration, subghz_protocol_dickert_mahs_const.te_long * 50) <
+                        subghz_protocol_dickert_mahs_const.te_delta * 70)) {
+            //Found header DICKERT_MAHS 44k us
             instance->decoder.parser_step = DickertMAHSDecoderStepInitial;
         }
         break;

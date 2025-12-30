@@ -1,7 +1,6 @@
 #include "kinggates_stylo_4k.h"
 #include "keeloq_common.h"
-#include <lib/toolbox/manchester_decoder.h>
-#include <lib/toolbox/manchester_encoder.h>
+
 #include "../subghz_keystore.h"
 #include "../blocks/const.h"
 #include "../blocks/decoder.h"
@@ -12,10 +11,10 @@
 #define TAG "SubGhzProtocoKingGatesStylo4k"
 
 static const SubGhzBlockConst subghz_protocol_kinggates_stylo_4k_const = {
-    .te_short = 500,
-    .te_long = 1000,
+    .te_short = 400,
+    .te_long = 1100,
     .te_delta = 140,
-    .min_count_bit_for_found = 61,
+    .min_count_bit_for_found = 89,
 };
 
 struct SubGhzProtocolDecoderKingGates_stylo_4k {
@@ -71,7 +70,7 @@ const SubGhzProtocolEncoder subghz_protocol_kinggates_stylo_4k_encoder = {
 const SubGhzProtocol subghz_protocol_kinggates_stylo_4k = {
     .name = SUBGHZ_PROTOCOL_KINGGATES_STYLO_4K_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_kinggates_stylo_4k_decoder,
@@ -158,14 +157,21 @@ static bool subghz_protocol_kinggates_stylo_4k_gen_data(
         }
     instance->generic.cnt = decrypt & 0xFFFF;
 
-    if(instance->generic.cnt < 0xFFFF) {
+    // Check for OFEX (overflow experimental) mode
+    if(furi_hal_subghz_get_rolling_counter_mult() != -0x7FFFFFFF) {
         if((instance->generic.cnt + furi_hal_subghz_get_rolling_counter_mult()) > 0xFFFF) {
             instance->generic.cnt = 0;
         } else {
             instance->generic.cnt += furi_hal_subghz_get_rolling_counter_mult();
         }
-    } else if((instance->generic.cnt >= 0xFFFF) && (furi_hal_subghz_get_rolling_counter_mult() != 0)) {
-        instance->generic.cnt = 0;
+    } else {
+        if((instance->generic.cnt + 0x1) > 0xFFFF) {
+            instance->generic.cnt = 0;
+        } else if(instance->generic.cnt >= 0x1 && instance->generic.cnt != 0xFFFE) {
+            instance->generic.cnt = 0xFFFE;
+        } else {
+            instance->generic.cnt++;
+        }
     }
 
     instance->generic.btn = (fix >> 17) & 0x0F;

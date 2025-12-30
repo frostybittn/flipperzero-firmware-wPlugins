@@ -70,8 +70,8 @@ const SubGhzProtocolEncoder subghz_protocol_somfy_telis_encoder = {
 const SubGhzProtocol subghz_protocol_somfy_telis = {
     .name = SUBGHZ_PROTOCOL_SOMFY_TELIS_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
+            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_somfy_telis_decoder,
     .encoder = &subghz_protocol_somfy_telis_encoder,
@@ -126,14 +126,21 @@ static bool subghz_protocol_somfy_telis_gen_data(
 
     btn = subghz_protocol_somfy_telis_get_btn_code();
 
-    if(instance->generic.cnt < 0xFFFF) {
+    // Check for OFEX (overflow experimental) mode
+    if(furi_hal_subghz_get_rolling_counter_mult() != -0x7FFFFFFF) {
         if((instance->generic.cnt + furi_hal_subghz_get_rolling_counter_mult()) > 0xFFFF) {
             instance->generic.cnt = 0;
         } else {
             instance->generic.cnt += furi_hal_subghz_get_rolling_counter_mult();
         }
-    } else if((instance->generic.cnt >= 0xFFFF) && (furi_hal_subghz_get_rolling_counter_mult() != 0)) {
-        instance->generic.cnt = 0;
+    } else {
+        if((instance->generic.cnt + 0x1) > 0xFFFF) {
+            instance->generic.cnt = 0;
+        } else if(instance->generic.cnt >= 0x1 && instance->generic.cnt != 0xFFFE) {
+            instance->generic.cnt = 0xFFFE;
+        } else {
+            instance->generic.cnt++;
+        }
     }
 
     uint8_t frame[7];

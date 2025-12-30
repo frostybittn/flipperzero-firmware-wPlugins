@@ -12,10 +12,10 @@
 #define SUBGHZ_NO_ALUTECH_AT_4N_RAINBOW_TABLE 0xFFFFFFFF
 
 static const SubGhzBlockConst subghz_protocol_alutech_at_4n_const = {
-    .te_short = 450,
-    .te_long = 900,
-    .te_delta = 150,
-    .min_count_bit_for_found = 61,
+    .te_short = 400,
+    .te_long = 800,
+    .te_delta = 140,
+    .min_count_bit_for_found = 72,
 };
 
 struct SubGhzProtocolDecoderAlutech_at_4n {
@@ -47,6 +47,8 @@ typedef enum {
     Alutech_at_4nDecoderStepCheckDuration,
 } Alutech_at_4nDecoderStep;
 
+static uint8_t alutech_at4n_counter_mode = 0;
+
 const SubGhzProtocolDecoder subghz_protocol_alutech_at_4n_decoder = {
     .alloc = subghz_protocol_decoder_alutech_at_4n_alloc,
     .free = subghz_protocol_decoder_alutech_at_4n_free,
@@ -74,7 +76,7 @@ const SubGhzProtocolEncoder subghz_protocol_alutech_at_4n_encoder = {
 const SubGhzProtocol subghz_protocol_alutech_at_4n = {
     .name = SUBGHZ_PROTOCOL_ALUTECH_AT_4N_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_alutech_at_4n_decoder,
@@ -275,14 +277,41 @@ static bool subghz_protocol_alutech_at_4n_gen_data(
         instance->generic.serial = (uint32_t)(data >> 24) & 0xFFFFFFFF;
     }
 
-    if(instance->generic.cnt < 0xFFFF) {
-        if((instance->generic.cnt + furi_hal_subghz_get_rolling_counter_mult()) > 0xFFFF) {
+    if(alutech_at4n_counter_mode == 0) {
+        // Check for OFEX (overflow experimental) mode
+        if(furi_hal_subghz_get_rolling_counter_mult() != -0x7FFFFFFF) {
+            if((instance->generic.cnt + furi_hal_subghz_get_rolling_counter_mult()) > 0xFFFF) {
+                instance->generic.cnt = 0;
+            } else {
+                instance->generic.cnt += furi_hal_subghz_get_rolling_counter_mult();
+            }
+        } else {
+            if((instance->generic.cnt + 0x1) > 0xFFFF) {
+                instance->generic.cnt = 0;
+            } else if(instance->generic.cnt >= 0x1 && instance->generic.cnt != 0xFFFE) {
+                instance->generic.cnt = 0xFFFE;
+            } else {
+                instance->generic.cnt++;
+            }
+        }
+    } else if(alutech_at4n_counter_mode == 1) {
+        // Mode 1
+        // 0000 / 0001 / FFFE / FFFF
+        if((instance->generic.cnt + 0x1) > 0xFFFF) {
+            instance->generic.cnt = 0;
+        } else if(instance->generic.cnt >= 0x1 && instance->generic.cnt != 0xFFFE) {
+            instance->generic.cnt = 0xFFFE;
+        } else {
+            instance->generic.cnt++;
+        }
+    } else {
+        // Mode 2
+        // 0x0000 / 0x0001 / 0x0002 / 0x0003 / 0x0004 / 0x0005
+        if(instance->generic.cnt >= 0x0005) {
             instance->generic.cnt = 0;
         } else {
-            instance->generic.cnt += furi_hal_subghz_get_rolling_counter_mult();
+            instance->generic.cnt++;
         }
-    } else if((instance->generic.cnt >= 0xFFFF) && (furi_hal_subghz_get_rolling_counter_mult() != 0)) {
-        instance->generic.cnt = 0;
     }
     crc = subghz_protocol_alutech_at_4n_decrypt_data_crc((uint8_t)(instance->generic.cnt & 0xFF));
     data = (uint64_t)crc << 56 | (uint64_t)instance->generic.serial << 24 |
@@ -435,6 +464,18 @@ SubGhzProtocolStatus subghz_protocol_encoder_alutech_at_4n_deserialize(
         //optional parameter parameter
         flipper_format_read_uint32(
             flipper_format, "Repeat", (uint32_t*)&instance->encoder.repeat, 1);
+
+        if(!flipper_format_rewind(flipper_format)) {
+            FURI_LOG_E(TAG, "Rewind error");
+            break;
+        }
+
+        uint32_t tmp_counter_mode;
+        if(flipper_format_read_uint32(flipper_format, "CounterMode", &tmp_counter_mode, 1)) {
+            alutech_at4n_counter_mode = (uint8_t)tmp_counter_mode;
+        } else {
+            alutech_at4n_counter_mode = 0;
+        }
 
         subghz_protocol_alutech_at_4n_remote_controller(
             &instance->generic, instance->crc, instance->alutech_at_4n_rainbow_table_file_name);
@@ -709,6 +750,18 @@ SubGhzProtocolStatus subghz_protocol_decoder_alutech_at_4n_deserialize(
             ret = SubGhzProtocolStatusErrorParserOthers;
             break;
         }
+        if(!flipper_format_rewind(flipper_format)) {
+            FURI_LOG_E(TAG, "Rewind error");
+            break;
+        }
+
+        uint32_t tmp_counter_mode;
+        if(flipper_format_read_uint32(flipper_format, "CounterMode", &tmp_counter_mode, 1)) {
+            alutech_at4n_counter_mode = (uint8_t)tmp_counter_mode;
+        } else {
+            alutech_at4n_counter_mode = 0;
+        }
+
     } while(false);
     return ret;
 }

@@ -63,7 +63,7 @@ const SubGhzProtocolEncoder subghz_protocol_hay21_encoder = {
 const SubGhzProtocol subghz_protocol_hay21 = {
     .name = SUBGHZ_PROTOCOL_HAY21_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_hay21_decoder,
@@ -147,17 +147,23 @@ static void subghz_protocol_encoder_hay21_get_upload(SubGhzProtocolEncoderHay21*
     instance->generic.btn = subghz_protocol_hay21_get_btn_code();
 
     // Counter increment
-    if(instance->generic.cnt < 0xF) {
-        if((instance->generic.cnt + furi_hal_subghz_get_rolling_counter_mult()) > 0xF) {
+    // Check for OFEX (overflow experimental) mode
+    if(furi_hal_subghz_get_rolling_counter_mult() != -0x7FFFFFFF) {
+        //not matter how big and long mult - we take only 4 bits ( AND 0xF) beacose hay21 counter have only 4 bits long (0..F)
+        if((instance->generic.cnt + (furi_hal_subghz_get_rolling_counter_mult() & 0xF)) > 0xF) {
             instance->generic.cnt = 0;
         } else {
-            instance->generic.cnt += furi_hal_subghz_get_rolling_counter_mult();
+            instance->generic.cnt += (furi_hal_subghz_get_rolling_counter_mult() & 0xF);
         }
-        if(furi_hal_subghz_get_rolling_counter_mult() >= 0xF) {
-            instance->generic.cnt = 0xF;
+    } else {
+        // OFEX mode
+        if((instance->generic.cnt + 0x1) > 0xF) {
+            instance->generic.cnt = 0;
+        } else if(instance->generic.cnt >= 0x1 && instance->generic.cnt != 0xE) {
+            instance->generic.cnt = 0xE;
+        } else {
+            instance->generic.cnt++;
         }
-    } else if(instance->generic.cnt >= 0xF) {
-        instance->generic.cnt = 0;
     }
 
     // Reconstruction of the data

@@ -75,7 +75,8 @@ const SubGhzProtocolEncoder subghz_protocol_raw_encoder = {
 const SubGhzProtocol subghz_protocol_raw = {
     .name = SUBGHZ_PROTOCOL_RAW_NAME,
     .type = SubGhzProtocolTypeRAW,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_315 |
+            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_RAW |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_raw_decoder,
@@ -292,9 +293,11 @@ void subghz_protocol_encoder_raw_stop(void* context) {
     furi_check(context);
     SubGhzProtocolEncoderRAW* instance = context;
     instance->is_running = false;
-    if(subghz_file_encoder_worker_is_running(instance->file_worker_encoder)) {
+    if(instance->file_worker_encoder &&
+       subghz_file_encoder_worker_is_running(instance->file_worker_encoder)) {
         subghz_file_encoder_worker_stop(instance->file_worker_encoder);
         subghz_file_encoder_worker_free(instance->file_worker_encoder);
+        instance->file_worker_encoder = NULL;
     }
 }
 
@@ -319,6 +322,7 @@ void subghz_protocol_raw_file_encoder_worker_set_callback_end(
 
 static bool subghz_protocol_encoder_raw_worker_init(SubGhzProtocolEncoderRAW* instance) {
     furi_assert(instance);
+    furi_check(!instance->file_worker_encoder);
 
     instance->file_worker_encoder = subghz_file_encoder_worker_alloc();
     if(subghz_file_encoder_worker_start(

@@ -65,7 +65,7 @@ const SubGhzProtocolEncoder subghz_protocol_magellan_encoder = {
 const SubGhzProtocol subghz_protocol_magellan = {
     .name = SUBGHZ_PROTOCOL_MAGELLAN_NAME,
     .type = SubGhzProtocolTypeStatic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
 
     .decoder = &subghz_protocol_magellan_decoder,
@@ -172,6 +172,7 @@ SubGhzProtocolStatus
             flipper_format, "Repeat", (uint32_t*)&instance->encoder.repeat, 1);
 
         if(!subghz_protocol_encoder_magellan_get_upload(instance)) {
+            instance->encoder.front = 0; // reset before start
             ret = SubGhzProtocolStatusErrorEncoderGetUpload;
             break;
         }
@@ -184,6 +185,7 @@ SubGhzProtocolStatus
 void subghz_protocol_encoder_magellan_stop(void* context) {
     SubGhzProtocolEncoderMagellan* instance = context;
     instance->encoder.is_running = false;
+    instance->encoder.front = 0; // reset position
 }
 
 LevelDuration subghz_protocol_encoder_magellan_yield(void* context) {
