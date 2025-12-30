@@ -1,0 +1,23 @@
+Filetype: Flipper SubGhz Key File
+Version: 1
+Frequency: 433920000
+Preset: FuriHalSubGhzPresetCustom
+Custom_preset_module: CC1101
+Custom_preset_data: 02 0D 03 47 08 32 0B 06 15 32 14 00 13 00 12 00 11 32 10 A7 18 18 19 1D 1D 92 1C 00 1B 04 20 FB 22 17 21 B6 00 00 00 12 0E 34 60 C5 C1 C0
+Lat: 0.000000
+Lon: 0.000000
+Protocol: BinRAW
+Bit: 535
+TE: 147
+Bit_RAW: 41
+Data_RAW: 00 03 00 00 00 00
+Bit_RAW: 254
+Data_RAW: 00 00 10 00 20 00 00 00 00 00 08 00 D0 08 01 40 33 00 C0 40 1C 00 B2 01 98 00 C2 03 00 00 00 03
+Bit_RAW: 35
+Data_RAW: 00 00 30 10 07
+Bit_RAW: 21
+Data_RAW: 00 00 0B
+Bit_RAW: 23
+Data_RAW: 00 01 40
+Bit_RAW: 161
+Data_RAW: 00 00 51 00 40 A0 2A 06 80 08 03 00 00 34 03 04 00 28 01 00 00
